@@ -1,0 +1,53 @@
+# Example Habit config. Copy this to your own file (e.g. `habit.yaml`) and edit.
+#
+# Top-level keys:
+#   user, timezone : optional metadata
+#   goals          : the list of things you track (at least one)
+#
+# Each goal has:
+#   name        : unique index key, no spaces (letters, digits, '_', '-')
+#   description : the prompt / what it means
+#   type        : bool | number | option
+#   choices     : required for `option` goals; not allowed otherwise
+#   value       : either a flat integer (points) OR a rule (a mapping with a
+#                 `type`, encoding richer scoring)
+
+user: daniel
+timezone: America/Chicago
+
+goals:
+  # A simple yes/no goal worth a flat 10 points.
+  - name: exercise
+    description: Did you exercise today?
+    type: bool
+    value: 10
+
+  # A number goal scored by a threshold rule: 5 points if you hit >= 8.
+  - name: water
+    description: How many glasses of water did you drink?
+    type: number
+    value:
+      type: threshold
+      at_least: 8
+      points: 5
+
+  # An option goal: pick one choice; points depend on which.
+  - name: mood
+    description: How was your mood today?
+    type: option
+    choices: [great, ok, bad]
+    value:
+      type: options
+      points_by_choice:
+        great: 5
+        ok: 2
+        bad: 0
+
+  # A goal the agent judges from your free-text entry (full points or zero).
+  - name: journaling
+    description: What did you reflect on today?
+    type: bool
+    value:
+      type: judged
+      judge: Award the points if the entry shows genuine reflection, not a token "nothing".
+      points: 15
