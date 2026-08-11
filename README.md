@@ -9,10 +9,24 @@ foundation everything else builds on.
 
 ## Install
 
+With [uv](https://docs.astral.sh/uv/) (recommended):
+
+```bash
+uv sync
+```
+
+This creates a `.venv` and installs the project plus dev dependencies from the
+committed `uv.lock`, so you get the exact versions that were tested. Run things
+with `uv run`, e.g. `uv run pytest`.
+
+<details><summary>Without uv (pip)</summary>
+
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e .          # runtime deps
+pip install pytest        # to run the tests
 ```
+</details>
 
 ## Writing your config
 
@@ -70,5 +84,8 @@ source and the problem. Unknown keys are rejected, so typos surface immediately.
 ## Development
 
 ```bash
-pytest
+uv run pytest
 ```
+
+When you change dependencies in `pyproject.toml`, run `uv lock` and commit the
+updated `uv.lock`. CI runs with `--frozen`, so it fails if the lock is stale.
