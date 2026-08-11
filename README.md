@@ -81,6 +81,33 @@ for name, goal in config.by_name.items():
 Invalid config raises `habit.config.ConfigError` with a message naming the
 source and the problem. Unknown keys are rejected, so typos surface immediately.
 
+## Scoring
+
+The rule engine turns a day's raw answers into awarded points. It's pure and
+deterministic — the same inputs always produce the same result, so scores can
+be recomputed on read rather than cached.
+
+```python
+from habit.config import load
+from habit.scoring import score_day, DayLog, JudgeVerdict
+
+config = load("habit.yaml")
+day = DayLog(
+    answers={"exercise": True, "water": 9, "mood": "great"},
+    verdicts={},  # agent verdicts for judged goals, once decided
+)
+result = score_day(config, day)
+result.total                       # summed points ("additive line items")
+result.by_goal["water"].detail     # "9 >= 8.0 -> 5 pts" (an audit trace)
+result.pending                     # judged goals still awaiting a verdict
+```
+
+The engine never calls a model. A `judged` goal with no verdict yet comes back
+as a `JudgeRequest` in `result.pending`; the agent decides, and you re-score
+with the verdict recorded in `DayLog.verdicts`. Each line item carries a
+`status` (`scored`, `skipped`, `pending_judgment`, `invalid`) and a
+human-readable `detail`.
+
 ## Development
 
 ```bash
