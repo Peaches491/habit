@@ -108,6 +108,22 @@ with the verdict recorded in `DayLog.verdicts`. Each line item carries a
 `status` (`scored`, `skipped`, `pending_judgment`, `invalid`) and a
 human-readable `detail`.
 
+## Check-in web UI
+
+A small Flask app serves a daily check-in form auto-generated from your config —
+one field per goal, with the widget chosen by the goal's type (checkbox for
+`bool`, number input for `number`, dropdown for `option`, and a text box for
+agent-judged goals).
+
+```bash
+uv run python -m habit.web --config habit.yaml
+# then open http://127.0.0.1:5000
+```
+
+The config is reloaded on each request, so editing the YAML just needs a page
+refresh. Submitting the form currently hits a stub handler that echoes the
+answers — wiring it to scoring and storage is the next step.
+
 ## Development
 
 ```bash
