@@ -196,6 +196,17 @@ def test_get_form_date_picker_hidden_behind_reveal_link(config_path) -> None:
     assert "d-none" in date_field
 
 
+def test_get_form_human_readable_date_heading(config_path) -> None:
+    client = create_app(config_path).test_client()
+    # date(1776, 2, 6) is a Tuesday per Python's (proleptic Gregorian) calendar.
+    html = client.get("/?date=1776-02-06").get_data(as_text=True)
+    heading_pos = html.index("Tuesday, February 6th, 1776")
+    link_pos = html.index("Logging a different day?")
+    total_pos = html.index("Total for 1776-02-06")
+    # heading, then the reveal link immediately under it, then the total.
+    assert heading_pos < link_pos < total_pos
+
+
 def test_get_form_running_total_scoring_meta(config_path) -> None:
     client = create_app(config_path).test_client()
     html = client.get("/").get_data(as_text=True)
@@ -255,10 +266,12 @@ def test_get_form_selecting_a_day_prefills_the_form(app_and_storage) -> None:
     # textarea (judged) -> prefilled as inner text.
     journal = _field_block(html, 'name="journal"')
     assert "Reflected on a good day." in journal
-    # viewing a non-today day -> the date field is shown, not hidden behind the link.
-    assert "Logging a different day?" not in html
+    # the human-readable date heading names the day being viewed, so the raw
+    # date picker stays tucked behind the reveal link regardless of which day.
+    assert "Wednesday, August 5th, 2026" in html
+    assert '>Logging a different day?</a>' in html
     date_field = html[html.index('id="date-field"') : html.index('id="_date"')]
-    assert "d-none" not in date_field
+    assert "d-none" in date_field
 
 
 def test_get_form_selecting_an_unlogged_day_is_blank(app_and_storage) -> None:

@@ -123,6 +123,19 @@ def _page_title(config: Config) -> str:
     return "Daily check-in"
 
 
+def _ordinal(n: int) -> str:
+    if 11 <= n % 100 <= 13:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+def _human_date(day: date) -> str:
+    """E.g. "Monday, February 6th, 1776" — for the heading at the top of the form."""
+    return f"{day.strftime('%A, %B')} {_ordinal(day.day)}, {day.year}"
+
+
 def build_fields(config: Config, answers: dict[str, AnswerValue] | None = None) -> list[FieldSpec]:
     """Turn a parsed config into the list of form fields to render.
 
@@ -248,6 +261,7 @@ def create_app(config_path: str, storage: StorageAdapter | None = None) -> Flask
             today=today.isoformat(),
             yesterday=(today - timedelta(days=1)).isoformat(),
             selected_date=selected.isoformat(),
+            human_date=_human_date(selected),
             is_today=(selected == today),
             locked=locked,
             sidebar_days=_sidebar_days(config, storage, today, selected),
@@ -341,7 +355,8 @@ _HEAD = """
       border-radius: 1rem;
       padding: 2.5rem;
     }
-    .habit-title { font-weight: 700; color: var(--nord6); margin-bottom: 1.75rem; }
+    .habit-title { font-weight: 700; color: var(--nord6); margin-bottom: .35rem; }
+    .habit-date-heading { color: var(--nord4); font-size: 1rem; margin: 0 0 .5rem; }
     .habit-total { font-size: 1.35rem; font-weight: 700; color: var(--nord6); }
     .habit-total .accent { color: var(--nord8); }
     .habit-link { color: var(--nord8); text-decoration: underline; font-size: .9rem; }
@@ -455,6 +470,8 @@ FORM_TEMPLATE = (
     </nav>
     <div class="habit-card">
       <h1 class="habit-title h3">{{ title }}</h1>
+      <p class="habit-date-heading">{{ human_date }}</p>
+      <a href="#" class="habit-link d-block mb-3" id="date-reveal">Logging a different day?</a>
       <div class="habit-total mb-3">{% if is_today %}Today's total{% else %}Total for {{ selected_date }}{% endif %}: <span class="accent" id="habit-running-total">0 pts</span></div>
       {% if locked %}
       <div class="habit-alert habit-alert-info mb-3">
@@ -464,19 +481,14 @@ FORM_TEMPLATE = (
       {% endif %}
       {% set dis = "disabled" if locked else "" %}
       <form method="post" action="/checkin">
-        <div class="mb-3">
-          {% if is_today %}
-          <a href="#" class="habit-link" id="date-reveal">Logging a different day?</a>
-          {% endif %}
-          <div id="date-field" class="mt-2{% if is_today %} d-none{% endif %}">
-            <label class="form-label" for="_date">Date</label>
-            <input type="date" class="form-control" id="_date" name="_date" value="{{ selected_date }}" {{ dis }}>
-            <div class="btn-group w-100 mt-2" role="group" aria-label="Quick date select">
-              <button type="button" class="btn btn-outline-primary flex-fill shortcut-btn" id="date-today"
-                      data-target="_date" data-value="{{ today }}" {{ dis }}>Today</button>
-              <button type="button" class="btn btn-outline-primary flex-fill shortcut-btn" id="date-yesterday"
-                      data-target="_date" data-value="{{ yesterday }}" {{ dis }}>Yesterday</button>
-            </div>
+        <div id="date-field" class="d-none mb-3">
+          <label class="form-label" for="_date">Date</label>
+          <input type="date" class="form-control" id="_date" name="_date" value="{{ selected_date }}" {{ dis }}>
+          <div class="btn-group w-100 mt-2" role="group" aria-label="Quick date select">
+            <button type="button" class="btn btn-outline-primary flex-fill shortcut-btn" id="date-today"
+                    data-target="_date" data-value="{{ today }}" {{ dis }}>Today</button>
+            <button type="button" class="btn btn-outline-primary flex-fill shortcut-btn" id="date-yesterday"
+                    data-target="_date" data-value="{{ yesterday }}" {{ dis }}>Yesterday</button>
           </div>
         </div>
         {% for f in fields %}
