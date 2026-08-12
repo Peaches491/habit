@@ -590,7 +590,9 @@ _HEAD = """
          hack (a negative margin canceling out a padding it didn't own is
          fragile; not having the padding there at all is simpler). */
       body { padding: 0 0 1.25rem; }
-      .habit-card { padding: .5rem; margin: 0 .75rem; }
+      /* Full-bleed like the sidebar rows: no border/radius/margin, so there's
+         no gap around the card revealing the page background underneath. */
+      .habit-card { padding: .5rem; margin: 0; border: none; border-radius: 0; }
       .habit-field-body { padding: .65rem .8rem .65rem .55rem; }
       .habit-field + .habit-field { margin-top: .6rem; }
       .habit-field-icon { flex-basis: 2.5rem; }
