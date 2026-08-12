@@ -280,6 +280,15 @@ def test_get_form_mobile_header_is_full_bleed(config_path) -> None:
     assert ".habit-sidebar-header { margin: 0 -1rem; width: calc(100% + 2rem); }" in html
 
 
+def test_get_form_day_row_scroll_position_persisted(config_path) -> None:
+    client = create_app(config_path).test_client()
+    html = client.get("/").get_data(as_text=True)
+    assert "'habit-days-scroll'" in html
+    assert "sessionStorage.getItem(key)" in html
+    assert "sessionStorage.setItem(key, el.scrollLeft)" in html
+    assert "querySelector('.habit-sidebar-days')" in html
+
+
 def test_get_form_overall_and_weekly_totals(app_and_storage) -> None:
     app, storage, _ = app_and_storage
     today = date.today()

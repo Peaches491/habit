@@ -697,6 +697,21 @@ _SIDEBAR_HTML = """
       </a>
       {% endfor %}
     </div>
+    <script>
+      (function () {
+        // Each day link is a normal full-page navigation, which would
+        // otherwise reset this row's horizontal scroll (relevant on mobile,
+        // where it's a scrollable strip) back to the start on every click.
+        var el = document.querySelector('.habit-sidebar-days');
+        if (!el) return;
+        var key = 'habit-days-scroll';
+        var saved = sessionStorage.getItem(key);
+        if (saved !== null) el.scrollLeft = parseInt(saved, 10) || 0;
+        el.addEventListener('scroll', function () {
+          sessionStorage.setItem(key, el.scrollLeft);
+        });
+      })();
+    </script>
   </nav>
 """
 
