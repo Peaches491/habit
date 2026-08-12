@@ -378,6 +378,7 @@ def create_app(config_path: str, storage: StorageAdapter | None = None) -> Flask
 # badge utilities go further and mark color/background !important, so status
 # badges use dedicated .badge-nord-* classes instead of fighting that.
 _HEAD = """
+  <meta name="color-scheme" content="dark light">
   <script>
     (function () {
       var saved = localStorage.getItem('habit-theme');
@@ -386,6 +387,17 @@ _HEAD = """
       }
     })();
   </script>
+  <style>
+    /* A browser paints a plain document white by default; Bootstrap and our
+       own CSS are both render-blocking network fetches, so without this
+       there's a brief white flash on EVERY navigation (every date/week click
+       is a real GET, no client router) before the dark background applies --
+       in every browser, not just ones that skip the rule below. This runs
+       inline, with no network dependency, so it paints immediately using
+       whichever theme the script above just picked. */
+    html[data-bs-theme="light"] { background: #e5e9f0; }
+    html:not([data-bs-theme="light"]) { background: #2e3440; }
+  </style>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -393,14 +405,14 @@ _HEAD = """
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined">
-  <meta name="color-scheme" content="dark light">
   <style>
     /* Every date/week click is a real full-page navigation (this is a plain
        server-rendered app, no client router) -- without this, the browser's
        default is a hard flash to blank white and back on every one. Chrome/
        Edge 126+ instead cross-fade smoothly between the old and new document;
-       browsers that don't support it just ignore the rule and behave as
-       before, so this is purely additive. */
+       browsers that don't support it (Safari, notably) just ignore the rule
+       and fall back to a normal navigation -- the background-color fix above
+       is what actually helps there. */
     @view-transition {
       navigation: auto;
     }

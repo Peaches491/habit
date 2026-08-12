@@ -285,6 +285,19 @@ def test_get_form_uses_view_transitions_for_navigation(config_path) -> None:
     assert 'rel="preconnect" href="https://fonts.googleapis.com"' in html
 
 
+def test_get_form_paints_correct_background_before_css_loads(config_path) -> None:
+    client = create_app(config_path).test_client()
+    html = client.get("/").get_data(as_text=True)
+    # An inline (no network dependency) style, positioned before the
+    # render-blocking CDN stylesheets, so the page never paints browsers'
+    # default white background while Bootstrap/fonts are still loading --
+    # unlike @view-transition this helps in every browser, Safari included.
+    background_style_pos = html.index('html[data-bs-theme="light"] { background:')
+    bootstrap_link_pos = html.index("cdn.jsdelivr.net/npm/bootstrap")
+    assert background_style_pos < bootstrap_link_pos
+    assert 'html:not([data-bs-theme="light"]) { background: #2e3440; }' in html
+
+
 def test_get_form_theme_toggle_present(config_path) -> None:
     client = create_app(config_path).test_client()
     html = client.get("/").get_data(as_text=True)
