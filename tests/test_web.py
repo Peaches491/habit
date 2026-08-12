@@ -245,7 +245,11 @@ def test_get_form_theme_toggle_present(config_path) -> None:
     client = create_app(config_path).test_client()
     html = client.get("/").get_data(as_text=True)
     assert 'id="theme-toggle"' in html
-    assert "Dark mode" in html  # server-rendered default before JS syncs it
+    assert 'aria-label="Toggle light/dark theme"' in html
+    # icon-only -- no visible text label alongside it.
+    toggle = html[html.index('id="theme-toggle"') : html.index("</button>")]
+    assert "Dark mode" not in toggle and "Light mode" not in toggle
+    assert 'id="theme-toggle-icon"' in toggle
     # flash-of-wrong-theme guard: applies a saved preference before first paint.
     assert "localStorage.getItem('habit-theme')" in html
 

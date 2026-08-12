@@ -442,12 +442,12 @@ _HEAD = """
     .habit-logo:hover { background: var(--habit-surface-2); }
     .habit-logo .material-symbols-outlined { color: var(--habit-accent); font-size: 1.4em; }
     .habit-theme-toggle {
-      display: flex; align-items: center; gap: .5rem; width: 100%;
+      display: flex; align-items: center; justify-content: center; width: 100%;
       padding: .6rem 1rem; border: none; border-bottom: 1px solid var(--habit-border);
-      background: none; color: var(--habit-text-muted); font-size: .85rem; cursor: pointer;
+      background: none; color: var(--habit-text-muted); cursor: pointer;
     }
     .habit-theme-toggle:hover { background: var(--habit-surface-2); color: var(--habit-text); }
-    .habit-theme-toggle .material-symbols-outlined { font-size: 1.2em; }
+    .habit-theme-toggle .material-symbols-outlined { font-size: 1.3em; }
     .habit-week-nav {
       display: flex; align-items: center; justify-content: space-between;
       padding: .6rem .5rem; border-bottom: 1px solid var(--habit-border);
@@ -460,6 +460,9 @@ _HEAD = """
     }
     .habit-week-arrow:hover { background: var(--habit-surface-2); color: var(--habit-accent); }
     .habit-week-arrow.disabled { color: var(--habit-border); pointer-events: none; }
+    /* Wrapper keeps the two stats stacked as one unit even when the sidebar
+       itself becomes a horizontal strip on mobile (see media query below). */
+    .habit-stats { display: flex; flex-direction: column; }
     .habit-stat { padding: .7rem 1rem; border-bottom: 1px solid var(--habit-border); }
     .habit-stat.highlight { background: rgba(136, 192, 208, .12); }
     .habit-stat-label {
@@ -492,19 +495,28 @@ _HEAD = """
       .mb-3 { margin-bottom: .6rem !important; }
       .mt-2 { margin-top: .4rem !important; }
       .mt-3 { margin-top: .6rem !important; }
+      /* Two horizontally-scrollable rows instead of one long strip: the
+         header (logo/theme/totals) on top, the week picker + days below. */
       .habit-sidebar {
         position: static; width: 100%; height: auto;
-        flex-direction: row; overflow-x: auto; margin-bottom: .75rem;
+        flex-direction: column; margin-bottom: .75rem;
       }
+      .habit-sidebar-header {
+        display: flex; align-items: stretch; overflow-x: auto;
+        border-bottom: 1px solid var(--habit-border);
+      }
+      .habit-sidebar-days { display: flex; align-items: stretch; overflow-x: auto; }
       .habit-logo { border-bottom: none; border-right: 1px solid var(--habit-border); flex: 0 0 auto; padding: .65rem .8rem; }
       .habit-theme-toggle { flex: 0 0 auto; width: auto; border-bottom: none; border-right: 1px solid var(--habit-border); }
       .habit-week-nav {
         flex: 0 0 auto; flex-direction: column; gap: .2rem;
         border-bottom: none; border-right: 1px solid var(--habit-border); padding: .5rem .6rem;
       }
-      .habit-stat { flex: 0 0 auto; border-bottom: none; border-right: 1px solid var(--habit-border); }
+      .habit-stats { flex: 0 0 auto; flex-direction: column; border-right: 1px solid var(--habit-border); }
+      .habit-stat { flex: 0 0 auto; }
+      /* Smaller day blocks on mobile -- same font sizes, just tighter. */
       .habit-day {
-        flex: 0 0 auto; min-width: 7rem; padding: .45rem .7rem;
+        flex: 0 0 auto; min-width: 4.5rem; padding: .4rem .5rem;
         border-bottom: none; border-right: 1px solid var(--habit-border); border-left: none;
         border-top: 3px solid transparent;
       }
@@ -607,66 +619,68 @@ _HEAD = """
 # everywhere too, the other two pages would just show an empty gutter.
 _SIDEBAR_HTML = """
   <nav class="habit-sidebar" aria-label="Recent days">
-    <a href="/" class="habit-logo">
-      <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
-      <span>Habit</span>
-    </a>
-    <button type="button" class="habit-theme-toggle" id="theme-toggle" aria-label="Toggle light/dark theme">
-      <span class="material-symbols-outlined" id="theme-toggle-icon" aria-hidden="true">dark_mode</span>
-      <span id="theme-toggle-label">Dark mode</span>
-    </button>
-    <script>
-      (function () {
-        var html = document.documentElement;
-        var icon = document.getElementById('theme-toggle-icon');
-        var label = document.getElementById('theme-toggle-label');
-        function sync() {
-          var dark = html.getAttribute('data-bs-theme') !== 'light';
-          icon.textContent = dark ? 'dark_mode' : 'light_mode';
-          label.textContent = dark ? 'Dark mode' : 'Light mode';
-        }
-        document.getElementById('theme-toggle').addEventListener('click', function () {
-          var next = html.getAttribute('data-bs-theme') === 'light' ? 'dark' : 'light';
-          html.setAttribute('data-bs-theme', next);
-          localStorage.setItem('habit-theme', next);
+    <div class="habit-sidebar-header">
+      <a href="/" class="habit-logo">
+        <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
+        <span>Habit</span>
+      </a>
+      <button type="button" class="habit-theme-toggle" id="theme-toggle" aria-label="Toggle light/dark theme">
+        <span class="material-symbols-outlined" id="theme-toggle-icon" aria-hidden="true">dark_mode</span>
+      </button>
+      <script>
+        (function () {
+          var html = document.documentElement;
+          var icon = document.getElementById('theme-toggle-icon');
+          function sync() {
+            icon.textContent = html.getAttribute('data-bs-theme') !== 'light' ? 'dark_mode' : 'light_mode';
+          }
+          document.getElementById('theme-toggle').addEventListener('click', function () {
+            var next = html.getAttribute('data-bs-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-bs-theme', next);
+            localStorage.setItem('habit-theme', next);
+            sync();
+          });
           sync();
-        });
-        sync();
-      })();
-    </script>
-    {% if overall_total is not none %}
-    <div class="habit-stat highlight">
-      <div class="habit-stat-label">All-time total</div>
-      <div class="habit-stat-value">{{ overall_total }} pts</div>
-    </div>
-    <div class="habit-stat">
-      <div class="habit-stat-label">This week</div>
-      <div class="habit-stat-value">{{ weekly_total }} pts</div>
-    </div>
-    {% endif %}
-    {% if week_nav %}
-    <div class="habit-week-nav">
-      <a href="/?week={{ week_nav.prev }}" class="habit-week-arrow" aria-label="Previous week">
-        <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
-      </a>
-      <span class="habit-week-label">{{ week_nav.label }}</span>
-      {% if week_nav.has_next %}
-      <a href="/?week={{ week_nav.next }}" class="habit-week-arrow" aria-label="Next week">
-        <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
-      </a>
-      {% else %}
-      <span class="habit-week-arrow disabled" aria-hidden="true">
-        <span class="material-symbols-outlined">chevron_right</span>
-      </span>
+        })();
+      </script>
+      {% if overall_total is not none %}
+      <div class="habit-stats">
+        <div class="habit-stat highlight">
+          <div class="habit-stat-label">All-time total</div>
+          <div class="habit-stat-value">{{ overall_total }} pts</div>
+        </div>
+        <div class="habit-stat">
+          <div class="habit-stat-label">This week</div>
+          <div class="habit-stat-value">{{ weekly_total }} pts</div>
+        </div>
+      </div>
       {% endif %}
     </div>
-    {% endif %}
-    {% for d in sidebar_days %}
-    <a href="/?date={{ d.date }}&week={{ week_start_date }}" class="habit-day{% if d.selected %} selected{% endif %}">
-      <span class="habit-day-date">{{ d.label }}{% if d.is_today %} (today){% endif %}</span>
-      <span class="habit-day-points">{% if d.points is not none %}{{ d.points }} pts{% else %}--{% endif %}</span>
-    </a>
-    {% endfor %}
+    <div class="habit-sidebar-days">
+      {% if week_nav %}
+      <div class="habit-week-nav">
+        <a href="/?week={{ week_nav.prev }}" class="habit-week-arrow" aria-label="Previous week">
+          <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+        </a>
+        <span class="habit-week-label">{{ week_nav.label }}</span>
+        {% if week_nav.has_next %}
+        <a href="/?week={{ week_nav.next }}" class="habit-week-arrow" aria-label="Next week">
+          <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+        </a>
+        {% else %}
+        <span class="habit-week-arrow disabled" aria-hidden="true">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </span>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% for d in sidebar_days %}
+      <a href="/?date={{ d.date }}&week={{ week_start_date }}" class="habit-day{% if d.selected %} selected{% endif %}">
+        <span class="habit-day-date">{{ d.label }}{% if d.is_today %} (today){% endif %}</span>
+        <span class="habit-day-points">{% if d.points is not none %}{{ d.points }} pts{% else %}--{% endif %}</span>
+      </a>
+      {% endfor %}
+    </div>
   </nav>
 """
 
