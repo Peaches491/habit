@@ -483,73 +483,6 @@ _HEAD = """
     .habit-day.future { opacity: .45; }
     .habit-day-date { font-size: .78rem; color: var(--habit-text-muted); }
     .habit-day-points { font-size: 1.05rem; font-weight: 600; color: var(--habit-text); }
-    @media (max-width: 900px) {
-      /* Compact overall on small screens -- less padding everywhere, same
-         font sizes. Bootstrap's spacing utilities (.mb-3 etc.) mark
-         themselves !important, so overriding them takes !important too. */
-      /* No horizontal padding: the sidebar rows sit flush against the
-         viewport edges (that's the point of full-bleed rows on mobile), and
-         .habit-card gets its own inset margin below instead of relying on
-         body's padding -- which previously fought the header's full-bleed
-         hack (a negative margin canceling out a padding it didn't own is
-         fragile; not having the padding there at all is simpler). */
-      body { padding: 1.25rem 0; }
-      .habit-card { padding: .5rem; margin: 0 .75rem; }
-      .habit-field-body { padding: .65rem .8rem .65rem .55rem; }
-      .habit-field + .habit-field { margin-top: .6rem; }
-      .habit-field-icon { flex-basis: 2.5rem; }
-      .habit-title { margin-bottom: .2rem; }
-      .mb-3 { margin-bottom: .6rem !important; }
-      .mt-2 { margin-top: .4rem !important; }
-      .mt-3 { margin-top: .6rem !important; }
-      /* Three rows instead of one long strip -- but only the days row is
-         meant to scroll. The header (logo/theme/all-time total) and week
-         picker (nav arrows/label + this week's total) should always fully
-         fit instead: their flexible child shrinks/truncates rather than the
-         row overflowing, so there's exactly one scrollbar, on the days. */
-      .habit-sidebar {
-        position: static; width: 100%; height: auto;
-        flex-direction: column; margin-bottom: .6rem;
-      }
-      .habit-sidebar-header, .habit-sidebar-week {
-        display: flex; align-items: stretch; overflow: hidden;
-        border-bottom: 1px solid var(--habit-border);
-      }
-      .habit-sidebar-days { display: flex; align-items: stretch; overflow-x: auto; }
-      .habit-logo { border-bottom: none; border-right: 1px solid var(--habit-border); flex: 0 0 auto; padding: .4rem .6rem; font-size: 1rem; }
-      .habit-theme-toggle {
-        flex: 0 0 auto; width: auto; padding: .4rem .6rem;
-        border-bottom: none; border-right: 1px solid var(--habit-border);
-      }
-      .habit-week-nav {
-        flex: 1 1 auto; min-width: 0; align-items: center; gap: .4rem;
-        border-bottom: none; padding: .35rem .5rem;
-      }
-      .habit-week-label {
-        font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      }
-      .habit-week-arrow { flex: 0 0 auto; width: 1.5rem; height: 1.5rem; }
-      /* The one flexible item per row -- shrinks (and truncates) instead of
-         forcing the row to overflow and scroll. */
-      .habit-stat {
-        flex: 1 1 auto; min-width: 0; border-bottom: none;
-        border-right: 1px solid var(--habit-border); padding: .35rem .6rem;
-      }
-      .habit-stat-label, .habit-stat-value {
-        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      }
-      .habit-stat-label { font-size: .62rem; }
-      .habit-stat-value { font-size: 1.05rem; }
-      /* Smaller day blocks on mobile -- tighter padding and type. */
-      .habit-day {
-        flex: 0 0 auto; min-width: 4.2rem; padding: .3rem .45rem;
-        border-bottom: none; border-right: 1px solid var(--habit-border); border-left: none;
-        border-top: 3px solid transparent;
-      }
-      .habit-day.selected { border-left: none; border-top-color: var(--habit-accent); }
-      .habit-day-date { font-size: .7rem; }
-      .habit-day-points { font-size: .92rem; }
-    }
     .habit-card {
       background: var(--habit-surface);
       border: 1px solid var(--habit-border);
@@ -639,6 +572,81 @@ _HEAD = """
     .habit-alert-danger { background: rgba(191, 97, 106, .12); border: 1px solid var(--nord11); }
     .habit-alert-info { background: rgba(136, 192, 208, .12); border: 1px solid var(--nord8); }
     .habit-alert-info strong { color: var(--habit-accent); }
+
+    /* This must stay the LAST rule block in the stylesheet: at equal
+       specificity CSS resolves ties by source order, so any override in here
+       needs to come after every base rule it overrides, not just the ones
+       that happened to exist when this block was first written. Getting that
+       wrong is exactly why .habit-card's mobile padding silently never
+       applied -- the base .habit-card rule above used to sit after this
+       block and kept winning. */
+    @media (max-width: 900px) {
+      /* Compact overall on small screens -- less padding everywhere, same
+         font sizes. Bootstrap's spacing utilities (.mb-3 etc.) mark
+         themselves !important, so overriding them takes !important too. */
+      /* No horizontal padding: the sidebar rows sit flush against the
+         viewport edges (that's the point of full-bleed rows on mobile), and
+         .habit-card gets its own inset margin below instead of relying on
+         body's padding -- which previously fought the header's full-bleed
+         hack (a negative margin canceling out a padding it didn't own is
+         fragile; not having the padding there at all is simpler). */
+      body { padding: 1.25rem 0; }
+      .habit-card { padding: .5rem; margin: 0 .75rem; }
+      .habit-field-body { padding: .65rem .8rem .65rem .55rem; }
+      .habit-field + .habit-field { margin-top: .6rem; }
+      .habit-field-icon { flex-basis: 2.5rem; }
+      .habit-title { margin-bottom: .2rem; }
+      .mb-3 { margin-bottom: .6rem !important; }
+      .mt-2 { margin-top: .4rem !important; }
+      .mt-3 { margin-top: .6rem !important; }
+      /* Three rows instead of one long strip -- but only the days row is
+         meant to scroll. The header (logo/theme/all-time total) and week
+         picker (nav arrows/label + this week's total) should always fully
+         fit instead: their flexible child shrinks/truncates rather than the
+         row overflowing, so there's exactly one scrollbar, on the days. */
+      .habit-sidebar {
+        position: static; width: 100%; height: auto;
+        flex-direction: column; margin-bottom: .6rem;
+      }
+      .habit-sidebar-header, .habit-sidebar-week {
+        display: flex; align-items: stretch; overflow: hidden;
+        border-bottom: 1px solid var(--habit-border);
+      }
+      .habit-sidebar-days { display: flex; align-items: stretch; overflow-x: auto; }
+      .habit-logo { border-bottom: none; border-right: 1px solid var(--habit-border); flex: 0 0 auto; padding: .4rem .6rem; font-size: 1rem; }
+      .habit-theme-toggle {
+        flex: 0 0 auto; width: auto; padding: .4rem .6rem;
+        border-bottom: none; border-right: 1px solid var(--habit-border);
+      }
+      .habit-week-nav {
+        flex: 1 1 auto; min-width: 0; align-items: center; gap: .4rem;
+        border-bottom: none; padding: .35rem .5rem;
+      }
+      .habit-week-label {
+        font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .habit-week-arrow { flex: 0 0 auto; width: 1.5rem; height: 1.5rem; }
+      /* The one flexible item per row -- shrinks (and truncates) instead of
+         forcing the row to overflow and scroll. */
+      .habit-stat {
+        flex: 1 1 auto; min-width: 0; border-bottom: none;
+        border-right: 1px solid var(--habit-border); padding: .35rem .6rem;
+      }
+      .habit-stat-label, .habit-stat-value {
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .habit-stat-label { font-size: .62rem; }
+      .habit-stat-value { font-size: 1.05rem; }
+      /* Smaller day blocks on mobile -- tighter padding and type. */
+      .habit-day {
+        flex: 0 0 auto; min-width: 4.2rem; padding: .3rem .45rem;
+        border-bottom: none; border-right: 1px solid var(--habit-border); border-left: none;
+        border-top: 3px solid transparent;
+      }
+      .habit-day.selected { border-left: none; border-top-color: var(--habit-accent); }
+      .habit-day-date { font-size: .7rem; }
+      .habit-day-points { font-size: .92rem; }
+    }
   </style>
 """
 
