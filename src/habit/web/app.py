@@ -65,6 +65,7 @@ class DaySummary:
     points: int | None  # None -> not logged yet, rendered as "--"
     selected: bool
     is_today: bool
+    is_future: bool
 
 
 def _widget_for(goal: Goal) -> tuple[str, tuple[str, ...] | None]:
@@ -233,6 +234,7 @@ def _sidebar_days(
                 points=points,
                 selected=(day == selected),
                 is_today=(day == today),
+                is_future=(day > today),
             )
         )
     return days
@@ -476,7 +478,9 @@ _HEAD = """
       padding: .65rem 1rem;
     }
     .habit-day:hover { background: var(--habit-surface-2); }
+    .habit-day.today { background: rgba(136, 192, 208, .1); }
     .habit-day.selected { background: var(--habit-surface-2); border-left-color: var(--habit-accent); }
+    .habit-day.future { opacity: .45; }
     .habit-day-date { font-size: .78rem; color: var(--habit-text-muted); }
     .habit-day-points { font-size: 1.05rem; font-weight: 600; color: var(--habit-text); }
     @media (max-width: 900px) {
@@ -504,6 +508,9 @@ _HEAD = """
         border-bottom: 1px solid var(--habit-border);
       }
       .habit-sidebar-days { border-bottom: none; }
+      /* Full-bleed: cancel body's horizontal padding so the header row runs
+         edge to edge instead of sitting inset with the rest of the page. */
+      .habit-sidebar-header { margin: 0 -1rem; width: calc(100% + 2rem); }
       .habit-logo { border-bottom: none; border-right: 1px solid var(--habit-border); flex: 0 0 auto; padding: .4rem .6rem; font-size: 1rem; }
       .habit-theme-toggle {
         flex: 0 0 auto; width: auto; padding: .4rem .6rem;
@@ -683,8 +690,9 @@ _SIDEBAR_HTML = """
     </div>
     <div class="habit-sidebar-days">
       {% for d in sidebar_days %}
-      <a href="/?date={{ d.date }}&week={{ week_start_date }}" class="habit-day{% if d.selected %} selected{% endif %}">
-        <span class="habit-day-date">{{ d.label }}{% if d.is_today %} (today){% endif %}</span>
+      <a href="/?date={{ d.date }}&week={{ week_start_date }}"
+         class="habit-day{% if d.selected %} selected{% endif %}{% if d.is_today %} today{% endif %}{% if d.is_future %} future{% endif %}">
+        <span class="habit-day-date">{{ d.label }}</span>
         <span class="habit-day-points">{% if d.points is not none %}{{ d.points }} pts{% else %}--{% endif %}</span>
       </a>
       {% endfor %}

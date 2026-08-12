@@ -234,11 +234,30 @@ def test_get_form_sidebar_shows_current_week(app_and_storage) -> None:
     days = html.split('<a href="/?date=')[1:]
     assert len(days) == 7  # one week, not a trailing window
     today_block = next(b for b in days if b.startswith(f"{today.isoformat()}&"))
-    assert 'class="habit-day selected"' in today_block.split("</a>")[0]
-    assert "20 pts" in today_block.split("</a>")[0]
+    today_head = today_block.split("</a>")[0]
+    assert "selected" in today_head and "today" in today_head
+    assert "20 pts" in today_head
     other_block = next(b for b in days if not b.startswith(f"{today.isoformat()}&"))
-    assert 'class="habit-day"' in other_block.split("</a>")[0]
-    assert ">--<" in other_block.split("</a>")[0]
+    other_head = other_block.split("</a>")[0]
+    assert "selected" not in other_head and "today" not in other_head
+    assert ">--<" in other_head
+    # "today" is shown via a tinted cell, not literal "(today)" text next to the date.
+    assert "(today)" not in html
+
+
+def test_get_form_sidebar_greys_out_future_days(app_and_storage) -> None:
+    app, _, _ = app_and_storage
+    client = app.test_client()
+    html = client.get("/").get_data(as_text=True)
+    days = html.split('<a href="/?date=')[1:]
+    today = date.today()
+    for block in days:
+        day = date.fromisoformat(block[:10])
+        head = block.split("</a>")[0]
+        if day > today:
+            assert "future" in head, f"{day} should be greyed out as a future day"
+        else:
+            assert "future" not in head, f"{day} should not be marked future"
 
 
 def test_get_form_theme_toggle_present(config_path) -> None:
@@ -252,6 +271,13 @@ def test_get_form_theme_toggle_present(config_path) -> None:
     assert 'id="theme-toggle-icon"' in toggle
     # flash-of-wrong-theme guard: applies a saved preference before first paint.
     assert "localStorage.getItem('habit-theme')" in html
+
+
+def test_get_form_mobile_header_is_full_bleed(config_path) -> None:
+    client = create_app(config_path).test_client()
+    html = client.get("/").get_data(as_text=True)
+    # cancels body's mobile horizontal padding so the header row spans edge to edge.
+    assert ".habit-sidebar-header { margin: 0 -1rem; width: calc(100% + 2rem); }" in html
 
 
 def test_get_form_overall_and_weekly_totals(app_and_storage) -> None:
