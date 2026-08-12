@@ -159,6 +159,7 @@ class Config(_Base):
     title: str | None = None
     user: str | None = None
     timezone: str | None = None
+    lock_submitted_days: bool = False
     goals: list[Goal]
 
     @field_validator("title")

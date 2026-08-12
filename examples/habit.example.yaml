@@ -5,6 +5,10 @@
 #                        "<title> - Check-in" (falls back to the user's name,
 #                        then a generic heading, if omitted)
 #   user, timezone     : optional metadata
+#   lock_submitted_days: optional, default false; if true, a day that's
+#                        already logged renders read-only in the web UI and
+#                        rejects resubmission (days not yet logged stay
+#                        editable either way)
 #   goals              : the list of things you track (at least one)
 #
 # Each goal has:

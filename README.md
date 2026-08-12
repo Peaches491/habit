@@ -49,6 +49,11 @@ goals:
 heading is `"<title> - Check-in"` if `title` is set, else `"Check-in — <user>"`,
 else a generic `"Daily check-in"`.
 
+`lock_submitted_days` (default `false`): if `true`, a day that's already been
+logged can no longer be edited — its form renders read-only (no submit
+button) and a resubmission is rejected server-side too, not just hidden in
+the UI. Days that haven't been logged yet stay editable either way.
+
 ### Goal fields
 
 | Field         | Required | Notes |
@@ -127,6 +132,12 @@ the deterministic rules only — judged goals count as pending; the real total
 is always recomputed server-side by `habit.scoring` on submit). The date field
 defaults to today and stays tucked behind a "Logging a different day?" link,
 with its own Today/Yesterday quick-select once revealed.
+
+A sidebar lists the last 14 days, each showing its point total (or `--` if
+not logged yet). Clicking a day reloads the form pre-filled with that day's
+answers — handy for reviewing or amending a past entry. If
+`lock_submitted_days` is set, a day that's already logged renders read-only
+instead.
 
 ```bash
 uv run python -m habit.web --config habit.yaml --storage habit_data.json

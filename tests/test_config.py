@@ -215,6 +215,23 @@ def test_metadata_is_optional() -> None:
     assert cfg.title is None
     assert cfg.user is None
     assert cfg.timezone is None
+    assert cfg.lock_submitted_days is False
+
+
+def test_lock_submitted_days_settable() -> None:
+    cfg = loads(
+        _yaml(
+            """
+            lock_submitted_days: true
+            goals:
+              - name: exercise
+                description: Did you exercise?
+                type: bool
+                value: 10
+            """
+        )
+    )
+    assert cfg.lock_submitted_days is True
 
 
 def test_blank_title_rejected() -> None:

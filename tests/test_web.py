@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import textwrap
 from datetime import date, timedelta
 
@@ -210,6 +211,128 @@ def test_get_form_running_total_scoring_meta(config_path) -> None:
         "points_by_choice": {"great": 5, "ok": 2, "bad": 0},
     }
     assert meta["journal"] == {"kind": "judged"}
+
+
+def test_get_form_sidebar_shows_recent_days(app_and_storage) -> None:
+    app, storage, _ = app_and_storage
+    today = date.today()
+    storage.upsert_raw(today, {"exercise": True, "water": 9, "mood": "great"})
+    client = app.test_client()
+    html = client.get("/").get_data(as_text=True)
+
+    days = html.split('<a href="/?date=')[1:]
+    assert len(days) == 14
+    # today has an answer -> shows its actual total, not "--", and is selected.
+    today_block = days[0]
+    assert today_block.startswith(f'{today.isoformat()}" class="habit-day selected"')
+    assert "20 pts" in today_block.split("</a>")[0]
+    # yesterday has no answer -> shows "--", not selected.
+    yesterday_block = days[1]
+    assert 'class="habit-day"' in yesterday_block.split("</a>")[0]
+    assert ">--<" in yesterday_block.split("</a>")[0]
+
+
+def test_get_form_selecting_a_day_prefills_the_form(app_and_storage) -> None:
+    app, storage, _ = app_and_storage
+    storage.upsert_raw(
+        date(2026, 8, 5),
+        {"exercise": True, "water": 9, "mood": "great", "journal": "Reflected on a good day."},
+    )
+    client = app.test_client()
+    html = client.get("/?date=2026-08-05").get_data(as_text=True)
+
+    assert 'id="_date" name="_date" value="2026-08-05"' in html
+    # bool -> the "yes" radio is checked.
+    exercise = _field_block(html, 'name="exercise"')
+    assert re.search(r'id="exercise-yes"[^>]*checked', exercise)
+    assert not re.search(r'id="exercise-no"[^>]*checked', exercise)
+    # number -> prefilled value attribute.
+    water = _field_block(html, 'name="water"')
+    assert 'value="9"' in water
+    # segmented option -> the matching choice's radio is checked.
+    mood = _field_block(html, 'name="mood"')
+    assert re.search(r'id="mood-1"[^>]*checked', mood)  # "great" is choice 1
+    # textarea (judged) -> prefilled as inner text.
+    journal = _field_block(html, 'name="journal"')
+    assert "Reflected on a good day." in journal
+    # viewing a non-today day -> the date field is shown, not hidden behind the link.
+    assert "Logging a different day?" not in html
+    date_field = html[html.index('id="date-field"') : html.index('id="_date"')]
+    assert "d-none" not in date_field
+
+
+def test_get_form_selecting_an_unlogged_day_is_blank(app_and_storage) -> None:
+    app, _, _ = app_and_storage
+    client = app.test_client()
+    html = client.get("/?date=2026-08-05").get_data(as_text=True)
+    exercise = _field_block(html, 'name="exercise"')
+    assert "checked" not in exercise
+    water = _field_block(html, 'name="water"')
+    assert 'value=""' in water
+
+
+@pytest.fixture
+def locked_config_path(tmp_path):
+    path = tmp_path / "habit.yaml"
+    path.write_text("lock_submitted_days: true\n" + CONFIG_YAML)
+    return str(path)
+
+
+@pytest.fixture
+def locked_app_and_storage(locked_config_path, tmp_path):
+    storage_path = tmp_path / "habit_data.json"
+    storage = JsonFileStorageAdapter(storage_path)
+    return create_app(locked_config_path, storage=storage), storage, storage_path
+
+
+def test_get_form_locked_day_disables_inputs(locked_app_and_storage) -> None:
+    app, storage, _ = locked_app_and_storage
+    storage.upsert_raw(date(2026, 8, 5), {"exercise": True, "water": 9})
+    client = app.test_client()
+    html = client.get("/?date=2026-08-05").get_data(as_text=True)
+
+    assert "already logged" in html
+    assert "lock_submitted_days" in html
+    assert "Submit check-in" not in html
+    water = _field_block(html, 'name="water"')
+    assert "disabled" in water
+    exercise = _field_block(html, 'name="exercise"')
+    assert "disabled" in exercise
+
+
+def test_get_form_unlogged_day_stays_editable_even_when_locking_enabled(
+    locked_app_and_storage,
+) -> None:
+    app, _, _ = locked_app_and_storage
+    client = app.test_client()
+    html = client.get("/?date=2026-08-05").get_data(as_text=True)
+    assert "already logged" not in html
+    assert "Submit check-in" in html
+    water = _field_block(html, 'name="water"')
+    assert "disabled" not in water
+
+
+def test_post_checkin_rejected_for_locked_day(locked_app_and_storage) -> None:
+    app, storage, _ = locked_app_and_storage
+    storage.upsert_raw(date(2026, 8, 5), {"exercise": True})
+    client = app.test_client()
+    resp = client.post("/checkin", data={"_date": "2026-08-05", "exercise": "false"})
+    assert resp.status_code == 403
+    assert "already logged" in resp.get_data(as_text=True)
+    # the original answer must survive -- the locked write was refused.
+    days = storage.read_raw(date(2026, 8, 5))
+    assert days[0].answers == {"exercise": True}
+
+
+def test_post_checkin_allowed_for_unlogged_day_when_locking_enabled(
+    locked_app_and_storage,
+) -> None:
+    app, storage, _ = locked_app_and_storage
+    client = app.test_client()
+    resp = client.post("/checkin", data={"_date": "2026-08-05", "exercise": "true"})
+    assert resp.status_code == 200
+    days = storage.read_raw(date(2026, 8, 5))
+    assert days[0].answers == {"exercise": True}
 
 
 def test_get_form_bad_config_shows_error(tmp_path) -> None:

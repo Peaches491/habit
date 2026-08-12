@@ -53,6 +53,17 @@ class FieldSpec:
     hint: str
     icon: str | None
     icon_is_material: bool
+    current: AnswerValue | None  # this goal's answer on the day being viewed, if any
+
+
+@dataclass(frozen=True)
+class DaySummary:
+    """One sidebar entry: a day plus its total, if it's been logged."""
+
+    date: str
+    label: str
+    points: int | None  # None -> not logged yet, rendered as "--"
+    selected: bool
 
 
 def _widget_for(goal: Goal) -> tuple[str, tuple[str, ...] | None]:
@@ -112,8 +123,12 @@ def _page_title(config: Config) -> str:
     return "Daily check-in"
 
 
-def build_fields(config: Config) -> list[FieldSpec]:
-    """Turn a parsed config into the list of form fields to render."""
+def build_fields(config: Config, answers: dict[str, AnswerValue] | None = None) -> list[FieldSpec]:
+    """Turn a parsed config into the list of form fields to render.
+
+    ``answers`` prefills each field with that day's existing value (from the
+    sidebar's "load a past day" flow); omit it for a fresh, empty form.
+    """
     fields: list[FieldSpec] = []
     for goal in config.goals:
         widget, choices = _widget_for(goal)
@@ -127,6 +142,7 @@ def build_fields(config: Config) -> list[FieldSpec]:
                 hint=_hint(goal),
                 icon=goal.icon,
                 icon_is_material=bool(goal.icon and _MATERIAL_ICON_RE.fullmatch(goal.icon)),
+                current=(answers or {}).get(goal.name),
             )
         )
     return fields
@@ -139,6 +155,45 @@ def _parse_date(raw: str | None) -> date:
         except ValueError:
             pass
     return date.today()
+
+
+# How many days (including today) the sidebar shows.
+_SIDEBAR_WINDOW_DAYS = 14
+
+
+def _answers_for(storage: StorageAdapter, day: date) -> dict[str, AnswerValue] | None:
+    """The raw answers already logged for ``day``, or ``None`` if unlogged.
+
+    A dedicated lookup (not just filtering the sidebar's window read) so it's
+    correct even for a day outside that window — e.g. a stale bookmarked link.
+    """
+    return next((d.answers for d in storage.read_raw(day) if d.date == day), None)
+
+
+def _sidebar_days(
+    config: Config,
+    storage: StorageAdapter,
+    today: date,
+    selected: date,
+    window_days: int = _SIDEBAR_WINDOW_DAYS,
+) -> list[DaySummary]:
+    """The last ``window_days`` days (today first), each with its total if logged."""
+    window_start = today - timedelta(days=window_days - 1)
+    raw_by_date = {d.date: d.answers for d in storage.read_raw(window_start)}
+    days = []
+    for offset in range(window_days):
+        day = today - timedelta(days=offset)
+        answers = raw_by_date.get(day)
+        points = score_day(config, DayLog(answers=answers)).total if answers is not None else None
+        days.append(
+            DaySummary(
+                date=day.isoformat(),
+                label=day.strftime("%a, %b %d"),
+                points=points,
+                selected=(day == selected),
+            )
+        )
+    return days
 
 
 def _parse_answers(config: Config, form) -> dict[str, AnswerValue]:  # type: ignore[no-untyped-def]
@@ -182,13 +237,20 @@ def create_app(config_path: str, storage: StorageAdapter | None = None) -> Flask
         except ConfigError as exc:
             return render_template_string(ERROR_TEMPLATE, error=str(exc)), 400
         today = date.today()
+        selected = _parse_date(request.args.get("date"))
+        selected_answers = _answers_for(storage, selected)
+        locked = config.lock_submitted_days and selected_answers is not None
         return render_template_string(
             FORM_TEMPLATE,
             title=_page_title(config),
-            fields=build_fields(config),
+            fields=build_fields(config, selected_answers),
             scoring_meta={goal.name: _scoring_meta(goal) for goal in config.goals},
             today=today.isoformat(),
             yesterday=(today - timedelta(days=1)).isoformat(),
+            selected_date=selected.isoformat(),
+            is_today=(selected == today),
+            locked=locked,
+            sidebar_days=_sidebar_days(config, storage, today, selected),
         )
 
     @app.post("/checkin")
@@ -199,6 +261,14 @@ def create_app(config_path: str, storage: StorageAdapter | None = None) -> Flask
             return render_template_string(ERROR_TEMPLATE, error=str(exc)), 400
 
         day = _parse_date(request.form.get("_date"))
+
+        if config.lock_submitted_days and _answers_for(storage, day) is not None:
+            error = (
+                f"{day.isoformat()} is already logged and locked for editing "
+                "(lock_submitted_days is enabled in the config)."
+            )
+            return render_template_string(ERROR_TEMPLATE, error=error), 403
+
         answers = _parse_answers(config, request.form)
         storage.upsert_raw(day, answers)
         score = score_day(config, DayLog(answers=answers))
@@ -238,8 +308,33 @@ _HEAD = """
       --bs-body-color: var(--nord6);
       --bs-border-color: var(--nord3);
     }
-    body { min-height: 100vh; padding: 3.5rem 1.25rem; background: var(--nord0); }
+    /* Left padding reserves room for the sidebar, which is anchored to the
+       viewport edge (position: fixed) rather than laid out next to the card,
+       so it stays put on the side of the page as the card scrolls/centers. */
+    body { min-height: 100vh; padding: 3.5rem 1.25rem 3.5rem 16rem; background: var(--nord0); }
     .habit-shell { max-width: 42rem; margin: 0 auto; }
+    .habit-sidebar {
+      position: fixed; top: 3.5rem; left: 1.5rem;
+      width: 12.5rem; max-height: calc(100vh - 5rem); overflow-y: auto;
+      display: flex; flex-direction: column; gap: .55rem;
+    }
+    .habit-day {
+      display: flex; flex-direction: column; gap: .1rem; text-decoration: none;
+      background: var(--nord1); border: 1px solid var(--nord3); border-radius: .6rem;
+      padding: .5rem .75rem;
+    }
+    .habit-day:hover { border-color: var(--nord8); }
+    .habit-day.selected { border-color: var(--nord8); background: var(--nord2); }
+    .habit-day-date { font-size: .78rem; color: rgba(236, 239, 244, .65); }
+    .habit-day-points { font-size: 1.05rem; font-weight: 600; color: var(--nord6); }
+    @media (max-width: 900px) {
+      body { padding-left: 1.25rem; }
+      .habit-sidebar {
+        position: static; width: 100%; max-height: none;
+        flex-direction: row; overflow-x: auto; margin-bottom: 1.25rem;
+      }
+      .habit-day { flex: 0 0 auto; min-width: 7rem; }
+    }
     .habit-card {
       background: var(--nord1);
       border: 1px solid var(--nord3);
@@ -323,6 +418,8 @@ _HEAD = """
     .habit-alert-warn { background: rgba(235, 203, 139, .12); border: 1px solid var(--nord13); }
     .habit-alert-warn strong { color: var(--nord13); }
     .habit-alert-danger { background: rgba(191, 97, 106, .12); border: 1px solid var(--nord11); }
+    .habit-alert-info { background: rgba(136, 192, 208, .12); border: 1px solid var(--nord8); }
+    .habit-alert-info strong { color: var(--nord8); }
   </style>
 """
 
@@ -348,20 +445,37 @@ FORM_TEMPLATE = (
 <body>
   {% macro prompt_icon(f) %}{% if f.icon_is_material %}<span class="material-symbols-outlined" aria-hidden="true">{{ f.icon }}</span>{% else %}<span aria-hidden="true">{{ f.icon }}</span>{% endif %}{% endmacro %}
   <div class="habit-shell">
+    <nav class="habit-sidebar" aria-label="Recent days">
+      {% for d in sidebar_days %}
+      <a href="/?date={{ d.date }}" class="habit-day{% if d.selected %} selected{% endif %}">
+        <span class="habit-day-date">{{ d.label }}</span>
+        <span class="habit-day-points">{% if d.points is not none %}{{ d.points }} pts{% else %}--{% endif %}</span>
+      </a>
+      {% endfor %}
+    </nav>
     <div class="habit-card">
       <h1 class="habit-title h3">{{ title }}</h1>
-      <div class="habit-total mb-3">Running total: <span class="accent" id="habit-running-total">0 pts</span></div>
+      <div class="habit-total mb-3">{% if is_today %}Today's total{% else %}Total for {{ selected_date }}{% endif %}: <span class="accent" id="habit-running-total">0 pts</span></div>
+      {% if locked %}
+      <div class="habit-alert habit-alert-info mb-3">
+        <strong>{{ selected_date }} is already logged.</strong> Editing is
+        locked (<code>lock_submitted_days</code> is enabled in the config).
+      </div>
+      {% endif %}
+      {% set dis = "disabled" if locked else "" %}
       <form method="post" action="/checkin">
         <div class="mb-3">
+          {% if is_today %}
           <a href="#" class="habit-link" id="date-reveal">Logging a different day?</a>
-          <div id="date-field" class="d-none mt-2">
+          {% endif %}
+          <div id="date-field" class="mt-2{% if is_today %} d-none{% endif %}">
             <label class="form-label" for="_date">Date</label>
-            <input type="date" class="form-control" id="_date" name="_date" value="{{ today }}">
+            <input type="date" class="form-control" id="_date" name="_date" value="{{ selected_date }}" {{ dis }}>
             <div class="btn-group w-100 mt-2" role="group" aria-label="Quick date select">
               <button type="button" class="btn btn-outline-primary flex-fill shortcut-btn" id="date-today"
-                      data-target="_date" data-value="{{ today }}">Today</button>
+                      data-target="_date" data-value="{{ today }}" {{ dis }}>Today</button>
               <button type="button" class="btn btn-outline-primary flex-fill shortcut-btn" id="date-yesterday"
-                      data-target="_date" data-value="{{ yesterday }}">Yesterday</button>
+                      data-target="_date" data-value="{{ yesterday }}" {{ dis }}>Yesterday</button>
             </div>
           </div>
         </div>
@@ -373,10 +487,10 @@ FORM_TEMPLATE = (
             <div class="habit-prompt" id="{{ f.name }}-label">{{ f.label }}</div>
             <div class="btn-group w-100" role="group" aria-labelledby="{{ f.name }}-label">
               <input type="radio" class="btn-check" name="{{ f.name }}" id="{{ f.name }}-yes"
-                     value="true" autocomplete="off">
+                     value="true" autocomplete="off" {% if f.current == true %}checked{% endif %} {{ dis }}>
               <label class="btn btn-outline-primary flex-fill" for="{{ f.name }}-yes">Yes</label>
               <input type="radio" class="btn-check" name="{{ f.name }}" id="{{ f.name }}-no"
-                     value="false" autocomplete="off">
+                     value="false" autocomplete="off" {% if f.current == false %}checked{% endif %} {{ dis }}>
               <label class="btn btn-outline-primary flex-fill" for="{{ f.name }}-no">No</label>
             </div>
           {% elif f.widget == "segmented" %}
@@ -384,7 +498,7 @@ FORM_TEMPLATE = (
             <div class="btn-group w-100" role="group" aria-labelledby="{{ f.name }}-label">
               {% for c in f.choices %}
               <input type="radio" class="btn-check" name="{{ f.name }}" id="{{ f.name }}-{{ loop.index }}"
-                     value="{{ c }}" autocomplete="off">
+                     value="{{ c }}" autocomplete="off" {% if f.current == c %}checked{% endif %} {{ dis }}>
               <label class="btn btn-outline-primary flex-fill" for="{{ f.name }}-{{ loop.index }}">{{ c }}</label>
               {% endfor %}
             </div>
@@ -392,30 +506,34 @@ FORM_TEMPLATE = (
             <label class="habit-prompt" for="{{ f.name }}">{{ f.label }}</label>
             {% if f.widget == "number" %}
               <input type="number" step="any" class="form-control" id="{{ f.name }}"
-                     name="{{ f.name }}">
+                     name="{{ f.name }}" value="{{ f.current if f.current is not none else '' }}" {{ dis }}>
               {% if f.shortcuts %}
               <div class="btn-group w-100 mt-2" role="group" aria-label="Quick values for {{ f.label }}">
                 {% for s in f.shortcuts %}
                 <button type="button" class="btn btn-outline-primary flex-fill shortcut-btn"
-                        data-target="{{ f.name }}" data-value="{{ s }}">{{ s }}</button>
+                        data-target="{{ f.name }}" data-value="{{ s }}" {{ dis }}>{{ s }}</button>
                 {% endfor %}
               </div>
               {% endif %}
             {% elif f.widget == "select" %}
-              <select class="form-select" id="{{ f.name }}" name="{{ f.name }}">
+              <select class="form-select" id="{{ f.name }}" name="{{ f.name }}" {{ dis }}>
                 <option value="">—</option>
-                {% for c in f.choices %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                {% for c in f.choices %}
+                <option value="{{ c }}" {% if f.current == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
               </select>
             {% elif f.widget == "textarea" %}
               <textarea class="form-control" id="{{ f.name }}" name="{{ f.name }}"
-                        rows="3"></textarea>
+                        rows="3" {{ dis }}>{{ f.current if f.current is not none else '' }}</textarea>
             {% endif %}
           {% endif %}
           <div class="form-text">{{ f.hint }}</div>
           </div>
         </div>
         {% endfor %}
+        {% if not locked %}
         <button type="submit" class="btn btn-primary w-100 mt-3">Submit check-in</button>
+        {% endif %}
       </form>
     </div>
   </div>
@@ -455,6 +573,7 @@ FORM_TEMPLATE = (
     (function () {
       var revealLink = document.getElementById('date-reveal');
       var dateField = document.getElementById('date-field');
+      if (!revealLink || !dateField) return;
       revealLink.addEventListener('click', function (e) {
         e.preventDefault();
         dateField.classList.remove('d-none');
