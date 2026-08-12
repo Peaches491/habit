@@ -322,7 +322,6 @@ def create_app(config_path: str, storage: StorageAdapter | None = None) -> Flask
             yesterday=(today - timedelta(days=1)).isoformat(),
             selected_date=selected.isoformat(),
             human_date=_human_date(selected),
-            is_today=(selected == today),
             locked=locked,
             **_sidebar_context(config, storage, today, selected, week_start_date),
         )
@@ -590,7 +589,7 @@ _HEAD = """
          body's padding -- which previously fought the header's full-bleed
          hack (a negative margin canceling out a padding it didn't own is
          fragile; not having the padding there at all is simpler). */
-      body { padding: 1.25rem 0; }
+      body { padding: 0 0 1.25rem; }
       .habit-card { padding: .5rem; margin: 0 .75rem; }
       .habit-field-body { padding: .65rem .8rem .65rem .55rem; }
       .habit-field + .habit-field { margin-top: .6rem; }
@@ -766,7 +765,7 @@ FORM_TEMPLATE = (
       <h1 class="habit-title h3">{{ title }}</h1>
       <p class="habit-date-heading">{{ human_date }}</p>
       <a href="#" class="habit-link d-block mb-3" id="date-reveal">Logging a different day?</a>
-      <div class="habit-total mb-3">{% if is_today %}Today's total{% else %}Total for {{ selected_date }}{% endif %}: <span class="accent" id="habit-running-total">0 pts</span></div>
+      <div class="habit-total mb-3">Daily total: <span class="accent" id="habit-running-total">0 pts</span></div>
       {% if locked %}
       <div class="habit-alert habit-alert-info mb-3">
         <strong>{{ selected_date }} is already logged.</strong> Editing is

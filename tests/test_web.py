@@ -202,7 +202,7 @@ def test_get_form_human_readable_date_heading(config_path) -> None:
     html = client.get("/?date=1776-02-06").get_data(as_text=True)
     heading_pos = html.index("Tuesday, February 6th, 1776")
     link_pos = html.index("Logging a different day?")
-    total_pos = html.index("Total for 1776-02-06")
+    total_pos = html.index("Daily total:")
     # heading, then the reveal link immediately under it, then the total.
     assert heading_pos < link_pos < total_pos
 
@@ -276,10 +276,10 @@ def test_get_form_theme_toggle_present(config_path) -> None:
 def test_get_form_mobile_header_is_full_bleed(config_path) -> None:
     client = create_app(config_path).test_client()
     html = client.get("/").get_data(as_text=True)
-    # body has no horizontal padding on mobile, so the sidebar rows (header
-    # included) are flush against the viewport edges with no special-casing;
-    # .habit-card gets its own inset margin instead.
-    assert "body { padding: 1.25rem 0; }" in html
+    # body has no horizontal (or top) padding on mobile, so the sidebar rows
+    # (header included) are flush against the top/left/right viewport edges
+    # with no special-casing; .habit-card gets its own inset margin instead.
+    assert "body { padding: 0 0 1.25rem; }" in html
     assert ".habit-card { padding: .5rem; margin: 0 .75rem; }" in html
 
 
