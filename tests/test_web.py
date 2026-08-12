@@ -280,6 +280,23 @@ def test_get_form_mobile_header_is_full_bleed(config_path) -> None:
     assert ".habit-sidebar-header { margin: 0 -1rem; width: calc(100% + 2rem); }" in html
 
 
+def test_get_form_mobile_only_days_row_scrolls(config_path) -> None:
+    client = create_app(config_path).test_client()
+    html = client.get("/").get_data(as_text=True)
+    # header/week rows never scroll -- their flexible child shrinks instead.
+    header_week_rule = html[
+        html.index(".habit-sidebar-header, .habit-sidebar-week {") : html.index(
+            ".habit-sidebar-days {"
+        )
+    ]
+    assert "overflow: hidden" in header_week_rule
+    assert "overflow-x" not in header_week_rule
+    # only the days row is a horizontal scroll strip.
+    days_rule = html[html.index(".habit-sidebar-days {") :]
+    days_rule = days_rule[: days_rule.index("}")]
+    assert "overflow-x: auto" in days_rule
+
+
 def test_get_form_day_row_scroll_position_persisted(config_path) -> None:
     client = create_app(config_path).test_client()
     html = client.get("/").get_data(as_text=True)

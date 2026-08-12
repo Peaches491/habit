@@ -496,18 +496,20 @@ _HEAD = """
       .mb-3 { margin-bottom: .6rem !important; }
       .mt-2 { margin-top: .4rem !important; }
       .mt-3 { margin-top: .6rem !important; }
-      /* Three compact, independently horizontally-scrollable rows instead of
-         one long strip: header (logo/theme/all-time total), week picker
-         (nav arrows/label + this week's total), then the days. */
+      /* Three rows instead of one long strip -- but only the days row is
+         meant to scroll. The header (logo/theme/all-time total) and week
+         picker (nav arrows/label + this week's total) should always fully
+         fit instead: their flexible child shrinks/truncates rather than the
+         row overflowing, so there's exactly one scrollbar, on the days. */
       .habit-sidebar {
         position: static; width: 100%; height: auto;
         flex-direction: column; margin-bottom: .6rem;
       }
-      .habit-sidebar-header, .habit-sidebar-week, .habit-sidebar-days {
-        display: flex; align-items: stretch; overflow-x: auto;
+      .habit-sidebar-header, .habit-sidebar-week {
+        display: flex; align-items: stretch; overflow: hidden;
         border-bottom: 1px solid var(--habit-border);
       }
-      .habit-sidebar-days { border-bottom: none; }
+      .habit-sidebar-days { display: flex; align-items: stretch; overflow-x: auto; }
       /* Full-bleed: cancel body's horizontal padding so the header row runs
          edge to edge instead of sitting inset with the rest of the page. */
       .habit-sidebar-header { margin: 0 -1rem; width: calc(100% + 2rem); }
@@ -517,12 +519,22 @@ _HEAD = """
         border-bottom: none; border-right: 1px solid var(--habit-border);
       }
       .habit-week-nav {
-        flex: 0 0 auto; align-items: center; gap: .4rem;
+        flex: 1 1 auto; min-width: 0; align-items: center; gap: .4rem;
         border-bottom: none; padding: .35rem .5rem;
       }
-      .habit-week-label { font-size: .72rem; }
-      .habit-week-arrow { width: 1.5rem; height: 1.5rem; }
-      .habit-stat { flex: 0 0 auto; border-bottom: none; border-right: 1px solid var(--habit-border); padding: .35rem .6rem; }
+      .habit-week-label {
+        font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .habit-week-arrow { flex: 0 0 auto; width: 1.5rem; height: 1.5rem; }
+      /* The one flexible item per row -- shrinks (and truncates) instead of
+         forcing the row to overflow and scroll. */
+      .habit-stat {
+        flex: 1 1 auto; min-width: 0; border-bottom: none;
+        border-right: 1px solid var(--habit-border); padding: .35rem .6rem;
+      }
+      .habit-stat-label, .habit-stat-value {
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
       .habit-stat-label { font-size: .62rem; }
       .habit-stat-value { font-size: 1.05rem; }
       /* Smaller day blocks on mobile -- tighter padding and type. */
