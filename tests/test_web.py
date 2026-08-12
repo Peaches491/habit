@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import textwrap
+from datetime import date
 
 import pytest
 
 from habit.config import loads
+from habit.storage import JsonFileStorageAdapter
 from habit.web import build_fields, create_app
 
 
@@ -96,16 +98,78 @@ def test_get_form_bad_config_shows_error(tmp_path) -> None:
     assert "Config error" in resp.get_data(as_text=True)
 
 
-# --- POST /checkin (stub) ----------------------------------------------------
+# --- POST /checkin ------------------------------------------------------------
 
 
-def test_post_checkin_echoes_submission(config_path) -> None:
-    client = create_app(config_path).test_client()
+@pytest.fixture
+def app_and_storage(config_path, tmp_path):
+    storage_path = tmp_path / "habit_data.json"
+    storage = JsonFileStorageAdapter(storage_path)
+    return create_app(config_path, storage=storage), storage, storage_path
+
+
+def test_post_checkin_scores_and_stores(app_and_storage) -> None:
+    app, storage, _ = app_and_storage
+    client = app.test_client()
     resp = client.post(
         "/checkin",
-        data={"_date": "2026-08-11", "exercise": "true", "water": "9", "mood": "great"},
+        data={
+            "_date": "2026-08-11",
+            "exercise": "true",
+            "water": "9",
+            "mood": "great",
+            "journal": "Reflected on a tough day at work.",
+        },
     )
     assert resp.status_code == 200
     html = resp.get_data(as_text=True)
-    assert "Stub handler" in html
-    assert "water" in html and "9" in html
+    assert "Check-in received" in html
+    assert "Total:" in html
+    assert "Awaiting judgment" in html  # journal is a judged goal, no verdict yet
+
+    days = storage.read_raw(date(2026, 1, 1))
+    assert len(days) == 1
+    assert days[0].date == date(2026, 8, 11)
+    assert days[0].answers["exercise"] is True
+    assert days[0].answers["water"] == 9
+    assert days[0].answers["mood"] == "great"
+
+
+def test_post_checkin_scores_deterministic_goals_immediately(app_and_storage) -> None:
+    app, _, _ = app_and_storage
+    client = app.test_client()
+    resp = client.post(
+        "/checkin",
+        data={"_date": "2026-08-11", "water": "9", "mood": "great"},
+    )
+    html = resp.get_data(as_text=True)
+    # exercise unchecked -> False -> scored 0, not skipped; water clears the
+    # threshold -> 5 pts; mood -> 5 pts. journal untouched -> skipped.
+    assert "Total:" in html and "10 pts" in html
+    assert "badge-nord-secondary" in html and ">skipped<" in html  # journal
+
+
+def test_post_checkin_missing_number_is_skipped(app_and_storage) -> None:
+    app, storage, _ = app_and_storage
+    client = app.test_client()
+    client.post("/checkin", data={"_date": "2026-08-11"})
+    days = storage.read_raw(date(2026, 1, 1))
+    assert "water" not in days[0].answers
+
+
+def test_post_checkin_bad_number_is_invalid(app_and_storage) -> None:
+    app, _, _ = app_and_storage
+    client = app.test_client()
+    resp = client.post(
+        "/checkin", data={"_date": "2026-08-11", "water": "lots"}
+    )
+    html = resp.get_data(as_text=True)
+    assert "badge-nord-danger" in html and ">invalid<" in html
+
+
+def test_post_checkin_missing_date_defaults_to_today(app_and_storage) -> None:
+    app, storage, _ = app_and_storage
+    client = app.test_client()
+    client.post("/checkin", data={"exercise": "true"})
+    days = storage.read_raw(date(2000, 1, 1))
+    assert days[0].date == date.today()

@@ -116,13 +116,15 @@ one field per goal, with the widget chosen by the goal's type (checkbox for
 agent-judged goals).
 
 ```bash
-uv run python -m habit.web --config habit.yaml
+uv run python -m habit.web --config habit.yaml --storage habit_data.json
 # then open http://127.0.0.1:5000
 ```
 
 The config is reloaded on each request, so editing the YAML just needs a page
-refresh. Submitting the form currently hits a stub handler that echoes the
-answers — wiring it to scoring and storage is the next step.
+refresh. Submitting the form stores the day's raw answers (via a
+`StorageAdapter` — a local JSON file today, Google Sheets later behind the
+same interface), scores them immediately, and shows the line items, total,
+and any agent-judged goals still awaiting a verdict.
 
 ## Development
 
