@@ -80,7 +80,9 @@ class Goal(_Base):
     name: str
     description: str
     type: GoalType
+    icon: str | None = None
     choices: list[str] | None = None
+    shortcuts: list[int] | list[float] | None = None
     value: Union[int, Rule]
 
     @field_validator("name")
@@ -97,6 +99,20 @@ class Goal(_Base):
     @classmethod
     def _description_non_empty(cls, v: str) -> str:
         if not v.strip():
+            raise ValueError("must not be empty")
+        return v
+
+    @field_validator("icon")
+    @classmethod
+    def _icon_non_blank(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("must not be blank")
+        return v
+
+    @field_validator("shortcuts")
+    @classmethod
+    def _shortcuts_non_empty(cls, v: list[int] | list[float] | None) -> list[int] | list[float] | None:
+        if v is not None and not v:
             raise ValueError("must not be empty")
         return v
 
@@ -124,15 +140,33 @@ class Goal(_Base):
                     "points_by_choice references unknown choices: "
                     f"{sorted(unknown)}"
                 )
+
+        # `shortcuts` only makes sense on a genuine number input — not a
+        # judged goal, which always renders as free text regardless of type.
+        if self.shortcuts is not None:
+            if self.type is not GoalType.NUMBER:
+                raise ValueError("`shortcuts` is only valid for number goals")
+            if isinstance(value, JudgedRule):
+                raise ValueError(
+                    "`shortcuts` is not valid on a judged goal (rendered as free text)"
+                )
         return self
 
 
 class Config(_Base):
     """Top-level parsed config: optional metadata plus the goals."""
 
+    title: str | None = None
     user: str | None = None
     timezone: str | None = None
     goals: list[Goal]
+
+    @field_validator("title")
+    @classmethod
+    def _title_non_blank(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("must not be blank")
+        return v
 
     @field_validator("goals")
     @classmethod

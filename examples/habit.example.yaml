@@ -1,17 +1,24 @@
 # Example Habit config. Copy this to your own file (e.g. `habit.yaml`) and edit.
 #
 # Top-level keys:
-#   user, timezone : optional metadata
-#   goals          : the list of things you track (at least one)
+#   title              : optional; shown at the top of the check-in form as
+#                        "<title> - Check-in" (falls back to the user's name,
+#                        then a generic heading, if omitted)
+#   user, timezone     : optional metadata
+#   goals              : the list of things you track (at least one)
 #
 # Each goal has:
 #   name        : unique index key, no spaces (letters, digits, '_', '-')
 #   description : the prompt / what it means
 #   type        : bool | number | option
+#   icon        : optional; an emoji or a Material Symbols icon name
+#                 (https://fonts.google.com/icons), shown before the prompt
 #   choices     : required for `option` goals; not allowed otherwise
+#   shortcuts   : optional quick-select values for `number` goals (not judged)
 #   value       : either a flat integer (points) OR a rule (a mapping with a
 #                 `type`, encoding richer scoring)
 
+title: Daily Habits
 user: daniel
 timezone: America/Chicago
 
@@ -20,12 +27,15 @@ goals:
   - name: exercise
     description: Did you exercise today?
     type: bool
+    icon: fitness_center
     value: 10
 
   # A number goal scored by a threshold rule: 5 points if you hit >= 8.
   - name: water
-    description: How many glasses of water did you drink?
+    description: How many glasses of water did you drink today?
     type: number
+    icon: "💧"
+    shortcuts: [3, 5, 9]
     value:
       type: threshold
       at_least: 8
@@ -35,6 +45,7 @@ goals:
   - name: mood
     description: How was your mood today?
     type: option
+    icon: mood
     choices: [great, ok, bad]
     value:
       type: options

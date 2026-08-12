@@ -34,6 +34,7 @@ Clone the repo and copy [`examples/habit.example.yaml`](examples/habit.example.y
 to your own file, then edit it.
 
 ```yaml
+title: Daily Habits          # optional; shown at the top of the check-in form
 user: daniel
 timezone: America/Chicago
 
@@ -44,6 +45,10 @@ goals:
     value: 10                 # flat points, OR a rule (see below)
 ```
 
+`title`, `user`, and `timezone` are all optional metadata. The check-in form's
+heading is `"<title> - Check-in"` if `title` is set, else `"Check-in — <user>"`,
+else a generic `"Daily check-in"`.
+
 ### Goal fields
 
 | Field         | Required | Notes |
@@ -51,7 +56,9 @@ goals:
 | `name`        | yes      | Unique index key. No spaces; letters, digits, `_`, `-`. |
 | `description` | yes      | The prompt / what the goal means. |
 | `type`        | yes      | `bool`, `number`, or `option`. |
+| `icon`        | no       | An emoji or a [Material Symbols](https://fonts.google.com/icons) name (e.g. `local_drink`); shown before the prompt. |
 | `choices`     | option only | A non-empty list of allowed values; forbidden on other types. |
+| `shortcuts`   | number only | A non-empty list of common values, rendered as quick-select buttons below the field; forbidden on judged goals (rendered as free text). |
 | `value`       | yes      | Either a flat integer (points) **or** a rule (a mapping with a `type`). |
 
 ### Rules
@@ -111,9 +118,15 @@ human-readable `detail`.
 ## Check-in web UI
 
 A small Flask app serves a daily check-in form auto-generated from your config —
-one field per goal, with the widget chosen by the goal's type (checkbox for
-`bool`, number input for `number`, dropdown for `option`, and a text box for
-agent-judged goals).
+one field per goal, with the widget chosen by the goal's type: a Yes/No toggle
+for `bool`, a number input for `number` (plus quick-select buttons if the goal
+declares `shortcuts`), joined toggle buttons for a short `option` list (a
+dropdown past 5 choices), and a text box for agent-judged goals. A running
+point total updates live as you fill out the form (a client-side preview of
+the deterministic rules only — judged goals count as pending; the real total
+is always recomputed server-side by `habit.scoring` on submit). The date field
+defaults to today and stays tucked behind a "Logging a different day?" link,
+with its own Today/Yesterday quick-select once revealed.
 
 ```bash
 uv run python -m habit.web --config habit.yaml --storage habit_data.json

@@ -45,6 +45,45 @@ def test_bool_goal_with_flat_int_value() -> None:
     assert goal.type is GoalType.BOOL
     assert goal.value == 10
     assert goal.choices is None
+    assert goal.icon is None
+
+
+def test_goal_with_icon() -> None:
+    cfg = loads(
+        _yaml(
+            """
+            goals:
+              - name: exercise
+                description: Did you exercise today?
+                type: bool
+                icon: fitness_center
+                value: 10
+              - name: water
+                description: How many glasses of water did you drink?
+                type: number
+                icon: "\U0001f4a7"
+                value: 1
+            """
+        )
+    )
+    assert cfg.by_name["exercise"].icon == "fitness_center"
+    assert cfg.by_name["water"].icon == "\U0001f4a7"
+
+
+def test_blank_icon_rejected() -> None:
+    with pytest.raises(ConfigError, match="must not be blank"):
+        loads(
+            _yaml(
+                """
+                goals:
+                  - name: exercise
+                    description: Did you exercise today?
+                    type: bool
+                    icon: "  "
+                    value: 10
+                """
+            )
+        )
 
 
 def test_number_goal_with_threshold_rule() -> None:
@@ -67,6 +106,26 @@ def test_number_goal_with_threshold_rule() -> None:
     assert isinstance(goal.value, ThresholdRule)
     assert goal.value.at_least == 8.0
     assert goal.value.points == 5
+
+
+def test_number_goal_with_shortcuts() -> None:
+    cfg = loads(
+        _yaml(
+            """
+            goals:
+              - name: water
+                description: How many glasses of water?
+                type: number
+                shortcuts: [3, 5, 9]
+                value:
+                  type: threshold
+                  at_least: 8
+                  points: 5
+            """
+        )
+    )
+    goal = cfg.by_name["water"]
+    assert goal.shortcuts == [3, 5, 9]
 
 
 def test_option_goal_with_options_rule() -> None:
@@ -119,6 +178,7 @@ def test_metadata_and_indexing() -> None:
     cfg = loads(
         _yaml(
             """
+            title: Daily Habits
             user: daniel
             timezone: America/Chicago
             goals:
@@ -133,6 +193,7 @@ def test_metadata_and_indexing() -> None:
             """
         )
     )
+    assert cfg.title == "Daily Habits"
     assert cfg.user == "daniel"
     assert cfg.timezone == "America/Chicago"
     assert set(cfg.by_name) == {"exercise", "water"}
@@ -151,8 +212,25 @@ def test_metadata_is_optional() -> None:
             """
         )
     )
+    assert cfg.title is None
     assert cfg.user is None
     assert cfg.timezone is None
+
+
+def test_blank_title_rejected() -> None:
+    with pytest.raises(ConfigError, match="must not be blank"):
+        loads(
+            _yaml(
+                """
+                title: "  "
+                goals:
+                  - name: exercise
+                    description: Did you exercise?
+                    type: bool
+                    value: 10
+                """
+            )
+        )
 
 
 # --- Name validation ---------------------------------------------------------
@@ -249,6 +327,58 @@ def test_duplicate_choices_rejected() -> None:
                     description: How was your mood?
                     type: option
                     choices: [ok, ok]
+                    value: 1
+                """
+            )
+        )
+
+
+def test_shortcuts_forbidden_on_non_number_goal() -> None:
+    with pytest.raises(ConfigError, match="only valid for number"):
+        loads(
+            _yaml(
+                """
+                goals:
+                  - name: mood
+                    description: How was your mood?
+                    type: option
+                    choices: [great, ok, bad]
+                    shortcuts: [1, 2]
+                    value: 1
+                """
+            )
+        )
+
+
+def test_shortcuts_forbidden_on_judged_goal() -> None:
+    with pytest.raises(ConfigError, match="not valid on a judged goal"):
+        loads(
+            _yaml(
+                """
+                goals:
+                  - name: water
+                    description: How many glasses of water?
+                    type: number
+                    shortcuts: [3, 5, 9]
+                    value:
+                      type: judged
+                      judge: Did they drink enough water?
+                      points: 5
+                """
+            )
+        )
+
+
+def test_empty_shortcuts_rejected() -> None:
+    with pytest.raises(ConfigError, match="must not be empty"):
+        loads(
+            _yaml(
+                """
+                goals:
+                  - name: water
+                    description: How many glasses of water?
+                    type: number
+                    shortcuts: []
                     value: 1
                 """
             )
