@@ -61,7 +61,8 @@ class DaySummary:
     """One sidebar entry: a day plus its total, if it's been logged."""
 
     date: str
-    label: str
+    label: str  # "Sun, Aug 09" -- desktop
+    short_label: str  # "Sun 8/9" -- mobile, where every character costs room
     points: int | None  # None -> not logged yet, rendered as "--"
     selected: bool
     is_today: bool
@@ -231,6 +232,7 @@ def _sidebar_days(
             DaySummary(
                 date=day.isoformat(),
                 label=day.strftime("%a, %b %d"),
+                short_label=f"{day.strftime('%a')} {day.month}/{day.day}",
                 points=points,
                 selected=(day == selected),
                 is_today=(day == today),
@@ -481,6 +483,7 @@ _HEAD = """
     .habit-day.selected { background: var(--habit-surface-2); border-left-color: var(--habit-accent); }
     .habit-day.future { opacity: .45; }
     .habit-day-date { font-size: .78rem; color: var(--habit-text-muted); }
+    .habit-day-date-short { display: none; }
     .habit-day-points { font-size: 1.05rem; font-weight: 600; color: var(--habit-text); }
     .habit-card {
       background: var(--habit-surface);
@@ -653,6 +656,8 @@ _HEAD = """
       }
       .habit-day.selected { border-left: none; border-top-color: var(--habit-accent); }
       .habit-day-date { font-size: .6rem; }
+      .habit-day-date-full { display: none; }
+      .habit-day-date-short { display: block; }
       .habit-day-points { font-size: .74rem; }
     }
   </style>
@@ -721,7 +726,8 @@ _SIDEBAR_HTML = """
       {% for d in sidebar_days %}
       <a href="/?date={{ d.date }}&week={{ week_start_date }}"
          class="habit-day{% if d.selected %} selected{% endif %}{% if d.is_today %} today{% endif %}{% if d.is_future %} future{% endif %}">
-        <span class="habit-day-date">{{ d.label }}</span>
+        <span class="habit-day-date habit-day-date-full">{{ d.label }}</span>
+        <span class="habit-day-date habit-day-date-short">{{ d.short_label }}</span>
         <span class="habit-day-points">{% if d.points is not none %}{{ d.points }} pts{% else %}--{% endif %}</span>
       </a>
       {% endfor %}

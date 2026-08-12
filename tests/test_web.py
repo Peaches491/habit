@@ -245,6 +245,18 @@ def test_get_form_sidebar_shows_current_week(app_and_storage) -> None:
     assert "(today)" not in html
 
 
+def test_get_form_sidebar_day_has_compact_mobile_label(tmp_path) -> None:
+    sunday_cfg = tmp_path / "habit.yaml"
+    sunday_cfg.write_text("week_start: sunday\n" + CONFIG_YAML)
+    client = create_app(str(sunday_cfg)).test_client()
+    # date(2026, 8, 9) is a Sunday, so with week_start: sunday it's the first
+    # day of its own week.
+    html = client.get("/?date=2026-08-09&week=2026-08-09").get_data(as_text=True)
+    block = html.split('<a href="/?date=2026-08-09')[1].split("</a>")[0]
+    assert '<span class="habit-day-date habit-day-date-full">Sun, Aug 09</span>' in block
+    assert '<span class="habit-day-date habit-day-date-short">Sun 8/9</span>' in block
+
+
 def test_get_form_sidebar_greys_out_future_days(app_and_storage) -> None:
     app, _, _ = app_and_storage
     client = app.test_client()
