@@ -9,6 +9,8 @@
 #                        already logged renders read-only in the web UI and
 #                        rejects resubmission (days not yet logged stay
 #                        editable either way)
+#   week_start         : optional, default monday; also accepts sunday --
+#                        which day the check-in sidebar's week view starts on
 #   goals              : the list of things you track (at least one)
 #
 # Each goal has:

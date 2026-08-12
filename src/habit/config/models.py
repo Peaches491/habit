@@ -160,6 +160,7 @@ class Config(_Base):
     user: str | None = None
     timezone: str | None = None
     lock_submitted_days: bool = False
+    week_start: Literal["sunday", "monday"] = "monday"
     goals: list[Goal]
 
     @field_validator("title")

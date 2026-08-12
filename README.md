@@ -54,6 +54,9 @@ logged can no longer be edited — its form renders read-only (no submit
 button) and a resubmission is rejected server-side too, not just hidden in
 the UI. Days that haven't been logged yet stay editable either way.
 
+`week_start` (default `monday`; also accepts `sunday`): which day the
+sidebar's week view starts on.
+
 ### Goal fields
 
 | Field         | Required | Notes |
@@ -133,9 +136,13 @@ is always recomputed server-side by `habit.scoring` on submit). The date field
 defaults to today and stays tucked behind a "Logging a different day?" link,
 with its own Today/Yesterday quick-select once revealed.
 
-A sidebar lists the last 14 days, each showing its point total (or `--` if
-not logged yet). Clicking a day reloads the form pre-filled with that day's
-answers — handy for reviewing or amending a past entry. If
+A full-height sidebar (anchored to the edge of the page, with an app logo at
+top that links back to `/`) shows one week at a time — 7 days, each with its
+point total (or `--` if not logged yet) — with prev/next arrows to page
+through weeks (never into a future one) and a light/dark theme toggle
+underneath the logo. It also shows a highlighted all-time point total and the
+current week's total. Clicking a day reloads the form pre-filled with that
+day's answers — handy for reviewing or amending a past entry. If
 `lock_submitted_days` is set, a day that's already logged renders read-only
 instead.
 

@@ -216,6 +216,7 @@ def test_metadata_is_optional() -> None:
     assert cfg.user is None
     assert cfg.timezone is None
     assert cfg.lock_submitted_days is False
+    assert cfg.week_start == "monday"
 
 
 def test_lock_submitted_days_settable() -> None:
@@ -232,6 +233,38 @@ def test_lock_submitted_days_settable() -> None:
         )
     )
     assert cfg.lock_submitted_days is True
+
+
+def test_week_start_settable() -> None:
+    cfg = loads(
+        _yaml(
+            """
+            week_start: sunday
+            goals:
+              - name: exercise
+                description: Did you exercise?
+                type: bool
+                value: 10
+            """
+        )
+    )
+    assert cfg.week_start == "sunday"
+
+
+def test_week_start_rejects_unknown_value() -> None:
+    with pytest.raises(ConfigError):
+        loads(
+            _yaml(
+                """
+                week_start: wednesday
+                goals:
+                  - name: exercise
+                    description: Did you exercise?
+                    type: bool
+                    value: 10
+                """
+            )
+        )
 
 
 def test_blank_title_rejected() -> None:

@@ -224,7 +224,7 @@ def test_get_form_running_total_scoring_meta(config_path) -> None:
     assert meta["journal"] == {"kind": "judged"}
 
 
-def test_get_form_sidebar_shows_recent_days(app_and_storage) -> None:
+def test_get_form_sidebar_shows_current_week(app_and_storage) -> None:
     app, storage, _ = app_and_storage
     today = date.today()
     storage.upsert_raw(today, {"exercise": True, "water": 9, "mood": "great"})
@@ -232,15 +232,86 @@ def test_get_form_sidebar_shows_recent_days(app_and_storage) -> None:
     html = client.get("/").get_data(as_text=True)
 
     days = html.split('<a href="/?date=')[1:]
-    assert len(days) == 14
-    # today has an answer -> shows its actual total, not "--", and is selected.
-    today_block = days[0]
-    assert today_block.startswith(f'{today.isoformat()}" class="habit-day selected"')
+    assert len(days) == 7  # one week, not a trailing window
+    today_block = next(b for b in days if b.startswith(f"{today.isoformat()}&"))
+    assert 'class="habit-day selected"' in today_block.split("</a>")[0]
     assert "20 pts" in today_block.split("</a>")[0]
-    # yesterday has no answer -> shows "--", not selected.
-    yesterday_block = days[1]
-    assert 'class="habit-day"' in yesterday_block.split("</a>")[0]
-    assert ">--<" in yesterday_block.split("</a>")[0]
+    other_block = next(b for b in days if not b.startswith(f"{today.isoformat()}&"))
+    assert 'class="habit-day"' in other_block.split("</a>")[0]
+    assert ">--<" in other_block.split("</a>")[0]
+
+
+def test_get_form_theme_toggle_present(config_path) -> None:
+    client = create_app(config_path).test_client()
+    html = client.get("/").get_data(as_text=True)
+    assert 'id="theme-toggle"' in html
+    assert "Dark mode" in html  # server-rendered default before JS syncs it
+    # flash-of-wrong-theme guard: applies a saved preference before first paint.
+    assert "localStorage.getItem('habit-theme')" in html
+
+
+def test_get_form_overall_and_weekly_totals(app_and_storage) -> None:
+    app, storage, _ = app_and_storage
+    today = date.today()
+    storage.upsert_raw(today, {"exercise": True, "water": 9, "mood": "great"})  # 20 pts
+    storage.upsert_raw(today - timedelta(days=200), {"exercise": True})  # 10 pts, outside this week
+    client = app.test_client()
+    html = client.get("/").get_data(as_text=True)
+    assert "All-time total" in html
+    assert "This week" in html
+    all_time_pos = html.index("All-time total")
+    week_pos = html.index("This week")
+    all_time_value = html[all_time_pos : week_pos].split('class="habit-stat-value">')[1].split("<")[0]
+    week_value = html[week_pos:].split('class="habit-stat-value">')[1].split("<")[0]
+    assert all_time_value == "30 pts"  # 20 (this week) + 10 (200 days ago)
+    assert week_value == "20 pts"  # only the currently displayed week
+
+
+def test_get_form_week_nav_on_current_week_has_no_next(app_and_storage) -> None:
+    app, _, _ = app_and_storage
+    client = app.test_client()
+    html = client.get("/").get_data(as_text=True)
+    assert "habit-week-arrow disabled" in html
+    assert 'aria-label="Previous week"' in html
+    # can always go back a week, just never forward past the current one.
+    assert 'aria-label="Next week"' not in html
+
+
+def test_get_form_week_nav_previous_week_allows_next(app_and_storage) -> None:
+    app, _, _ = app_and_storage
+    client = app.test_client()
+    last_week = (date.today() - timedelta(days=7)).isoformat()
+    html = client.get(f"/?week={last_week}").get_data(as_text=True)
+    assert 'aria-label="Next week"' in html
+    assert "habit-week-arrow disabled" not in html
+
+
+def test_get_form_week_nav_clamped_to_current_week(app_and_storage) -> None:
+    app, _, _ = app_and_storage
+    client = app.test_client()
+    current_week_html = client.get("/").get_data(as_text=True)
+    future = (date.today() + timedelta(days=30)).isoformat()
+    future_request_html = client.get(f"/?week={future}").get_data(as_text=True)
+    # requesting a week far in the future is clamped back to the current one.
+    current_days = current_week_html.split('<a href="/?date=')[1:8]
+    future_days = future_request_html.split('<a href="/?date=')[1:8]
+    assert [b[:10] for b in current_days] == [b[:10] for b in future_days]
+    assert "habit-week-arrow disabled" in future_request_html
+
+
+def test_week_start_config_controls_first_day_of_week(tmp_path) -> None:
+    monday_cfg = tmp_path / "monday.yaml"
+    monday_cfg.write_text(CONFIG_YAML)  # week_start defaults to monday
+    sunday_cfg = tmp_path / "sunday.yaml"
+    sunday_cfg.write_text("week_start: sunday\n" + CONFIG_YAML)
+
+    monday_html = create_app(str(monday_cfg)).test_client().get("/").get_data(as_text=True)
+    sunday_html = create_app(str(sunday_cfg)).test_client().get("/").get_data(as_text=True)
+
+    monday_first = date.fromisoformat(monday_html.split('<a href="/?date=')[1][:10])
+    sunday_first = date.fromisoformat(sunday_html.split('<a href="/?date=')[1][:10])
+    assert monday_first.strftime("%A") == "Monday"
+    assert sunday_first.strftime("%A") == "Sunday"
 
 
 def test_get_form_selecting_a_day_prefills_the_form(app_and_storage) -> None:
