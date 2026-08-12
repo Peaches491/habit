@@ -27,6 +27,7 @@
 title: Daily Habits
 user: daniel
 timezone: America/Chicago
+week_start: sunday
 
 goals:
   # A simple yes/no goal worth a flat 10 points.

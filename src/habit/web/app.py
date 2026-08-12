@@ -613,12 +613,17 @@ _HEAD = """
         display: flex; align-items: stretch; overflow: hidden;
         border-bottom: 1px solid var(--habit-border);
       }
+      /* Logo pinned left, theme toggle pinned far right. */
+      .habit-sidebar-header { justify-content: space-between; align-items: center; }
       .habit-sidebar-days { display: flex; align-items: stretch; overflow-x: auto; }
-      .habit-logo { border-bottom: none; border-right: 1px solid var(--habit-border); flex: 0 0 auto; padding: .4rem .6rem; font-size: 1rem; }
+      .habit-logo { flex: 0 0 auto; padding: .4rem .6rem; font-size: 1rem; }
+      /* A plain circular icon button -- no divider border, it's the only
+         other thing in the row besides the logo. */
       .habit-theme-toggle {
-        flex: 0 0 auto; width: auto; padding: .4rem .6rem;
-        border-bottom: none; border-right: 1px solid var(--habit-border);
+        flex: 0 0 auto; width: 2rem; height: 2rem; padding: 0; margin: 0 .5rem;
+        border: none; border-radius: 50%; background: var(--habit-surface-2);
       }
+      .habit-theme-toggle:hover { background: var(--habit-border); }
       .habit-week-nav {
         flex: 1 1 auto; min-width: 0; align-items: center; gap: .4rem;
         border-bottom: none; padding: .35rem .5rem;
@@ -626,27 +631,29 @@ _HEAD = """
       .habit-week-label {
         font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       }
-      .habit-week-arrow { flex: 0 0 auto; width: 1.5rem; height: 1.5rem; }
-      /* The one flexible item per row -- shrinks (and truncates) instead of
-         forcing the row to overflow and scroll. */
+      /* Bigger, easier-to-tap prev/next week buttons. */
+      .habit-week-arrow { flex: 0 0 auto; width: 2.25rem; height: 2.25rem; }
+      /* The flexible items in the week row -- shrink (and truncate) instead
+         of forcing the row to overflow and scroll. */
       .habit-stat {
         flex: 1 1 auto; min-width: 0; border-bottom: none;
-        border-right: 1px solid var(--habit-border); padding: .35rem .6rem;
+        border-right: 1px solid var(--habit-border); padding: .35rem .5rem;
       }
       .habit-stat-label, .habit-stat-value {
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       }
-      .habit-stat-label { font-size: .62rem; }
-      .habit-stat-value { font-size: 1.05rem; }
-      /* Smaller day blocks on mobile -- tighter padding and type. */
+      .habit-stat-label { font-size: .58rem; }
+      .habit-stat-value { font-size: .95rem; }
+      /* All 7 days condensed onto one line -- equal-width flexible cells
+         instead of a fixed min-width, so there's nothing left to scroll. */
       .habit-day {
-        flex: 0 0 auto; min-width: 4.2rem; padding: .3rem .45rem;
+        flex: 1 1 0; min-width: 0; padding: .25rem .15rem; text-align: center;
         border-bottom: none; border-right: 1px solid var(--habit-border); border-left: none;
         border-top: 3px solid transparent;
       }
       .habit-day.selected { border-left: none; border-top-color: var(--habit-accent); }
-      .habit-day-date { font-size: .7rem; }
-      .habit-day-points { font-size: .92rem; }
+      .habit-day-date { font-size: .6rem; }
+      .habit-day-points { font-size: .74rem; }
     }
   </style>
 """
@@ -680,12 +687,6 @@ _SIDEBAR_HTML = """
           sync();
         })();
       </script>
-      {% if overall_total is not none %}
-      <div class="habit-stat highlight">
-        <div class="habit-stat-label">All-time total</div>
-        <div class="habit-stat-value">{{ overall_total }} pts</div>
-      </div>
-      {% endif %}
     </div>
     <div class="habit-sidebar-week">
       {% if week_nav %}
@@ -706,6 +707,10 @@ _SIDEBAR_HTML = """
       </div>
       {% endif %}
       {% if overall_total is not none %}
+      <div class="habit-stat highlight">
+        <div class="habit-stat-label">All-time total</div>
+        <div class="habit-stat-value">{{ overall_total }} pts</div>
+      </div>
       <div class="habit-stat">
         <div class="habit-stat-label">This week</div>
         <div class="habit-stat-value">{{ weekly_total }} pts</div>
