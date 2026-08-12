@@ -276,8 +276,11 @@ def test_get_form_theme_toggle_present(config_path) -> None:
 def test_get_form_mobile_header_is_full_bleed(config_path) -> None:
     client = create_app(config_path).test_client()
     html = client.get("/").get_data(as_text=True)
-    # cancels body's mobile horizontal padding so the header row spans edge to edge.
-    assert ".habit-sidebar-header { margin: 0 -1rem; width: calc(100% + 2rem); }" in html
+    # body has no horizontal padding on mobile, so the sidebar rows (header
+    # included) are flush against the viewport edges with no special-casing;
+    # .habit-card gets its own inset margin instead.
+    assert "body { padding: 1.25rem 0; }" in html
+    assert ".habit-card { padding: .5rem; margin: 0 .75rem; }" in html
 
 
 def test_get_form_mobile_only_days_row_scrolls(config_path) -> None:

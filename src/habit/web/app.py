@@ -487,8 +487,14 @@ _HEAD = """
       /* Compact overall on small screens -- less padding everywhere, same
          font sizes. Bootstrap's spacing utilities (.mb-3 etc.) mark
          themselves !important, so overriding them takes !important too. */
-      body { padding: 1.25rem 1rem; }
-      .habit-card { padding: 1.25rem; }
+      /* No horizontal padding: the sidebar rows sit flush against the
+         viewport edges (that's the point of full-bleed rows on mobile), and
+         .habit-card gets its own inset margin below instead of relying on
+         body's padding -- which previously fought the header's full-bleed
+         hack (a negative margin canceling out a padding it didn't own is
+         fragile; not having the padding there at all is simpler). */
+      body { padding: 1.25rem 0; }
+      .habit-card { padding: .5rem; margin: 0 .75rem; }
       .habit-field-body { padding: .65rem .8rem .65rem .55rem; }
       .habit-field + .habit-field { margin-top: .6rem; }
       .habit-field-icon { flex-basis: 2.5rem; }
@@ -510,9 +516,6 @@ _HEAD = """
         border-bottom: 1px solid var(--habit-border);
       }
       .habit-sidebar-days { display: flex; align-items: stretch; overflow-x: auto; }
-      /* Full-bleed: cancel body's horizontal padding so the header row runs
-         edge to edge instead of sitting inset with the rest of the page. */
-      .habit-sidebar-header { margin: 0 -1rem; width: calc(100% + 2rem); }
       .habit-logo { border-bottom: none; border-right: 1px solid var(--habit-border); flex: 0 0 auto; padding: .4rem .6rem; font-size: 1rem; }
       .habit-theme-toggle {
         flex: 0 0 auto; width: auto; padding: .4rem .6rem;
