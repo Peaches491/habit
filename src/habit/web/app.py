@@ -386,12 +386,24 @@ _HEAD = """
       }
     })();
   </script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet"
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined">
   <meta name="color-scheme" content="dark light">
   <style>
+    /* Every date/week click is a real full-page navigation (this is a plain
+       server-rendered app, no client router) -- without this, the browser's
+       default is a hard flash to blank white and back on every one. Chrome/
+       Edge 126+ instead cross-fade smoothly between the old and new document;
+       browsers that don't support it just ignore the rule and behave as
+       before, so this is purely additive. */
+    @view-transition {
+      navigation: auto;
+    }
     :root {
       /* The raw Nord palette never changes between themes -- nord0 is always
          dark, nord8 always a pale frost blue. What changes per theme is which

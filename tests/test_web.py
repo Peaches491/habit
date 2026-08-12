@@ -272,6 +272,19 @@ def test_get_form_sidebar_greys_out_future_days(app_and_storage) -> None:
             assert "future" not in head, f"{day} should not be marked future"
 
 
+def test_get_form_uses_view_transitions_for_navigation(config_path) -> None:
+    client = create_app(config_path).test_client()
+    html = client.get("/").get_data(as_text=True)
+    # Smooths the flash/flicker between full-page navigations (every date or
+    # week click is a real GET, not client-side routing) on browsers that
+    # support it; harmlessly ignored otherwise.
+    assert "@view-transition" in html
+    assert "navigation: auto;" in html
+    # Speeds up the CDN stylesheet fetches that would otherwise block first paint.
+    assert 'rel="preconnect" href="https://cdn.jsdelivr.net"' in html
+    assert 'rel="preconnect" href="https://fonts.googleapis.com"' in html
+
+
 def test_get_form_theme_toggle_present(config_path) -> None:
     client = create_app(config_path).test_client()
     html = client.get("/").get_data(as_text=True)
