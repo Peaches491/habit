@@ -29,7 +29,7 @@ from ..config import (
 )
 from ..config.models import Goal
 from ..scoring import AnswerValue, DayLog, score_day
-from ..storage import JsonFileStorageAdapter, StorageAdapter
+from ..storage import StorageAdapter, adapter_for_path
 
 
 # Option goals with this many choices or fewer render as a joined row of
@@ -173,7 +173,7 @@ def create_app(config_path: str, storage: StorageAdapter | None = None) -> Flask
     app = Flask(__name__)
     app.config["HABIT_CONFIG_PATH"] = str(config_path)
     if storage is None:
-        storage = JsonFileStorageAdapter(Path(config_path).with_name("habit_data.json"))
+        storage = adapter_for_path(Path(config_path).with_name("habit_data.json"))
 
     @app.get("/")
     def index():  # type: ignore[no-untyped-def]

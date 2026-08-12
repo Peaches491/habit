@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import os
 
-from ..storage import JsonFileStorageAdapter
+from ..storage import adapter_for_path
 from .app import create_app
 
 
@@ -21,14 +21,15 @@ def main() -> None:
     parser.add_argument(
         "--storage",
         default=os.environ.get("HABIT_STORAGE", "habit_data.json"),
-        help="Path to the JSON storage file (default: $HABIT_STORAGE or habit_data.json).",
+        help="Path to the storage file (default: $HABIT_STORAGE or habit_data.json). "
+        "Backend is picked by extension: .db/.sqlite/.sqlite3 -> SQLite, else JSON.",
     )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=5000)
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
 
-    app = create_app(args.config, storage=JsonFileStorageAdapter(args.storage))
+    app = create_app(args.config, storage=adapter_for_path(args.storage))
     app.run(host=args.host, port=args.port, debug=args.debug)
 
 

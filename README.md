@@ -135,9 +135,22 @@ uv run python -m habit.web --config habit.yaml --storage habit_data.json
 
 The config is reloaded on each request, so editing the YAML just needs a page
 refresh. Submitting the form stores the day's raw answers (via a
-`StorageAdapter` — a local JSON file today, Google Sheets later behind the
-same interface), scores them immediately, and shows the line items, total,
+`StorageAdapter`), scores them immediately, and shows the line items, total,
 and any agent-judged goals still awaiting a verdict.
+
+### Storage backends
+
+`--storage` picks the backend by file extension — `.db` / `.sqlite` /
+`.sqlite3` for SQLite, anything else for a JSON file:
+
+```bash
+uv run python -m habit.web --config habit.yaml --storage habit_data.db
+```
+
+Both implement the same `StorageAdapter` interface (`habit.storage`), so the
+web app and any future caller never need to know which one is behind it.
+Google Sheets will be a third adapter behind the same interface once
+service-account credentials are available.
 
 ## Development
 
